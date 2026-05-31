@@ -1,0 +1,3942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX DRIVE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0c; color: #fff; font-family: 'JetBrains Mono', monospace; user-select: none; }
+  canvas { display: block; }
+
+  :root {
+    --bg: rgba(8, 10, 14, 0.78);
+    --border: rgba(255,255,255,0.10);
+    --border-hover: rgba(255,255,255,0.35);
+    --text: #e8e8ea;
+    --text-dim: #888;
+    --text-darker: #555;
+    --gold: #ffd866;
+    --gold-bright: #fff200;
+    --gold-border: rgba(255, 216, 102, 0.35);
+    --gold-bg: rgba(255, 216, 102, 0.10);
+    --gold-bg-hover: rgba(255, 216, 102, 0.18);
+    --blue: #00d4ff;
+    --red: #ff3b3b;
+    --green: #00ff88;
+    --rare: #d864ff;
+    --purple: #b86bff;
+    --purple-bg: rgba(184, 107, 255, 0.10);
+    --purple-border: rgba(184, 107, 255, 0.45);
+    --orange: #ff9633;
+    --xp-glow: #4fc3ff;
+    --tier-easy: #6cdc83;
+    --tier-medium: #ffb84d;
+    --tier-hard: #ff5c7c;
+  }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+
+  /* ─── BASE PANEL & BUTTON ─── */
+  .panel {
+    background: var(--bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  .hud-btn {
+    height: 42px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    pointer-events: all;
+    transition: all 0.18s ease;
+  }
+  .hud-btn:hover {
+    background: rgba(255,255,255,0.10);
+    border-color: var(--border-hover);
+  }
+  .hud-btn svg { width: 11px; height: 11px; fill: currentColor; flex-shrink: 0; }
+
+  .hud-btn.gold {
+    color: var(--gold);
+    border-color: var(--gold-border);
+  }
+  .hud-btn.gold:hover {
+    background: var(--gold-bg);
+    border-color: var(--gold);
+  }
+  .hud-btn.balance { cursor: default; }
+  .hud-btn.balance:hover { background: var(--bg); border-color: var(--gold-border); }
+
+  /* ─── SPEEDOMETER (top-left) ─── */
+  #speedo {
+    position: absolute;
+    top: 24px; left: 24px;
+    padding: 14px 20px;
+    min-width: 180px;
+  }
+  .speedo-label { font-size: 9px; letter-spacing: 3.5px; color: var(--text-dim); margin-bottom: 4px; }
+  .speedo-num-row { display: flex; align-items: baseline; gap: 8px; }
+  .speedo-value { font-size: 52px; font-weight: 900; line-height: 0.95; letter-spacing: -2px; color: #fff; font-family: 'Orbitron', sans-serif; }
+  .speedo-unit { font-size: 10px; letter-spacing: 2.5px; color: var(--text-dim); font-family: 'Orbitron', sans-serif; }
+  .speedo-bar { margin-top: 10px; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .speedo-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--red) 100%);
+    width: 0%;
+    transition: width 0.15s ease;
+  }
+  .speedo-nitro {
+    margin-top: 9px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+    padding: 5px 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 3px;
+    transition: all 0.18s ease;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-weight: 700;
+  }
+  .speedo-nitro .bolt { font-size: 11px; transition: color 0.18s; }
+  .speedo-nitro.active {
+    color: #fff;
+    border-color: rgba(255, 136, 68, 0.7);
+    background: rgba(255, 136, 68, 0.18);
+    text-shadow: 0 0 10px rgba(255, 136, 68, 0.8);
+    box-shadow: 0 0 18px rgba(255, 136, 68, 0.30), inset 0 0 12px rgba(255, 136, 68, 0.18);
+  }
+  .speedo-nitro.active .bolt { color: #ff8844; }
+
+  /* ─── TOP-RIGHT CONTROLS ROW ─── */
+  #controls-row {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .coin-icon {
+    display: inline-block;
+    width: 11px; height: 11px;
+    background: radial-gradient(circle at 30% 30%, #ffe066, #d4a517 70%, #8a6500);
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px rgba(255,200,50,0.45);
+  }
+  .coin-icon.lg { width: 14px; height: 14px; }
+
+  /* ─── STATS STRIP ─── */
+  #stats {
+    position: absolute;
+    top: 78px;
+    right: 24px;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .stat-cell { text-align: right; }
+  .stat-label { font-size: 8px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 3px; }
+  .stat-value { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #fff; }
+  .stat-divider { width: 1px; height: 26px; background: rgba(255,255,255,0.08); }
+
+  /* ─── WARNING ─── */
+  #warning {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) translateY(-180px);
+    background: rgba(255, 50, 50, 0.10);
+    border: 1px solid rgba(255, 80, 80, 0.55);
+    border-radius: 4px;
+    padding: 9px 22px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: #ff5d5d;
+    opacity: 0;
+    transition: opacity 0.15s;
+    text-shadow: 0 0 12px rgba(255,50,50,0.6);
+    pointer-events: none;
+  }
+  #warning.show { opacity: 1; animation: pulse 0.6s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,50,50,0.4); }
+    50% { box-shadow: 0 0 26px 2px rgba(255,50,50,0.30); background: rgba(255, 50, 50, 0.20); }
+  }
+  .warn-arrows { display: inline-block; margin: 0 6px; transition: opacity 0.1s; }
+
+  /* ─── RADAR ─── */
+  #radar {
+    position: absolute;
+    bottom: 24px; right: 24px;
+    width: 140px; height: 180px;
+    overflow: hidden;
+    padding: 0;
+  }
+  #radar-label {
+    position: absolute;
+    top: 10px; left: 14px;
+    font-size: 8px;
+    letter-spacing: 2.5px;
+    color: var(--text-dim);
+    z-index: 2;
+    font-family: 'Orbitron', sans-serif;
+  }
+  #radar-canvas { position: absolute; inset: 0; }
+
+  /* ─── CONTROLS HINT ─── */
+  #controls-hint {
+    position: absolute;
+    bottom: 24px; left: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-darker);
+    letter-spacing: 0.5px;
+  }
+  #controls-hint kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #bbb;
+    margin: 0 1px;
+  }
+  #controls-hint .sep { color: var(--text-darker); margin: 0 8px; }
+
+  /* ─── FULL-SCREEN OVERLAYS ─── */
+  #pause-overlay {
+    position: fixed; inset: 0; z-index: 25;
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    background: radial-gradient(circle at center, rgba(10,10,14,0.78) 0%, rgba(0,0,0,0.95) 100%);
+    backdrop-filter: blur(6px);
+    pointer-events: all;
+  }
+
+  /* Dashboard / home screen */
+  #dashboard {
+    position: fixed; inset: 0; z-index: 26;
+    display: flex;
+    align-items: center; justify-content: center;
+    background: radial-gradient(circle at center, rgba(10,10,14,0.88) 0%, rgba(0,0,0,0.98) 100%);
+    backdrop-filter: blur(12px);
+    pointer-events: all;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .dash-content {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .dash-header { text-align: center; margin-bottom: 4px; }
+  .dash-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 52px;
+    letter-spacing: 12px;
+    color: #fff;
+    text-shadow: 0 0 32px rgba(255,255,255,0.18);
+    margin-bottom: 6px;
+  }
+  .dash-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text-dim);
+  }
+  .dash-card {
+    background: rgba(20, 24, 32, 0.7);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 5px;
+    padding: 16px 20px;
+  }
+  .dash-last-run { border-color: rgba(255, 80, 80, 0.25); }
+  .dash-section-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .dash-row { display: flex; gap: 16px; }
+  .dash-row.dash-two .dash-stat { flex: 1; text-align: center; }
+  .dash-row.dash-three .dash-stat { flex: 1; text-align: center; }
+  .dash-stat .lbl {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    font-family: 'Orbitron', sans-serif;
+  }
+  .dash-stat .val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1.5px;
+  }
+  .dash-stat .val.gold {
+    color: var(--gold);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dash-vehicle {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .dash-car-preview {
+    width: 140px;
+    background: linear-gradient(180deg, #1a1f2a 0%, #0f1218 100%);
+    border-radius: 3px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .dash-car-preview svg { width: 100%; max-width: 130px; }
+  .dash-vehicle-info { flex: 1; }
+  .dash-car-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .dash-car-spec {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+  }
+  .dash-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .dash-actions .btn-cta { flex: 1; padding: 14px 22px; }
+  .btn-cta.primary {
+    background: var(--blue);
+    color: #000;
+    border-color: var(--blue);
+    font-weight: 900;
+  }
+  .btn-cta.primary:hover {
+    background: #33dfff;
+    border-color: #33dfff;
+    box-shadow: 0 0 24px rgba(0, 212, 255, 0.45);
+    letter-spacing: 5px;
+  }
+  .btn-cta.gold-btn {
+    color: var(--gold);
+    border-color: var(--gold-border);
+  }
+  .btn-cta.gold-btn:hover {
+    background: var(--gold-bg);
+    border-color: var(--gold);
+  }
+  .dash-keys { text-align: center; margin-top: 8px; }
+
+  /* Map picker (on dashboard) */
+  .map-row {
+    display: flex;
+    gap: 10px;
+  }
+  .map-card {
+    flex: 1;
+    background: rgba(20, 24, 32, 0.65);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 5px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: center;
+    pointer-events: all;
+  }
+  .map-card:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .map-card.active {
+    background: rgba(0, 212, 255, 0.22);
+    border-color: rgba(0, 212, 255, 1);
+    box-shadow: 0 0 24px rgba(0, 212, 255, 0.45), inset 0 0 12px rgba(0, 212, 255, 0.15);
+    transform: translateY(-1px);
+  }
+  .map-card.active .map-name { color: var(--blue); text-shadow: 0 0 6px rgba(0, 212, 255, 0.6); }
+  .map-card .map-icon {
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .map-card .map-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .map-card .map-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+  }
+
+  /* RANK CARD */
+  .rank-card { padding: 14px 18px; }
+  .rank-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .rank-badge {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    flex-shrink: 0;
+    border: 2px solid currentColor;
+    background: rgba(255,255,255,0.04);
+    box-shadow: 0 0 12px currentColor;
+  }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rank-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+  .rank-prestige-chip {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--purple-bg);
+    border: 1px solid var(--purple-border);
+    color: var(--purple);
+    letter-spacing: 1.5px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+  }
+  .rank-xp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    letter-spacing: 0.5px;
+  }
+  .xp-bar-track {
+    height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4fc3ff, #00d4ff);
+    border-radius: 4px;
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+    transition: width 0.5s cubic-bezier(0.2,0.8,0.2,1);
+  }
+
+  /* DAILY CHALLENGES */
+  .challenges-list { display: flex; flex-direction: column; gap: 8px; }
+  .challenge-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(20, 24, 32, 0.55);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 5px;
+    transition: all 0.2s;
+  }
+  .challenge-item.tier-easy   { border-left: 3px solid var(--tier-easy);   }
+  .challenge-item.tier-medium { border-left: 3px solid var(--tier-medium); }
+  .challenge-item.tier-hard   { border-left: 3px solid var(--tier-hard);   }
+  .challenge-item.done {
+    background: rgba(0, 255, 136, 0.06);
+    border-color: rgba(0, 255, 136, 0.30);
+  }
+  .challenge-item.claimed { opacity: 0.45; }
+  .challenge-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+  .challenge-text { flex: 1; min-width: 0; }
+  .challenge-label {
+    font-size: 11px;
+    color: #ddd;
+    margin-bottom: 5px;
+    letter-spacing: 0.5px;
+  }
+  .challenge-progress-row { display: flex; align-items: center; gap: 8px; }
+  .challenge-bar-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .challenge-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4fc3ff, #00d4ff);
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+  .challenge-item.done .challenge-bar-fill {
+    background: linear-gradient(90deg, #6cdc83, #00ff88);
+  }
+  .challenge-progress-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    min-width: 60px;
+    text-align: right;
+  }
+  .challenge-reward {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .challenge-claim-btn {
+    background: var(--gold-bg-hover);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    pointer-events: all;
+    transition: all 0.2s;
+    line-height: 1.2;
+    text-align: center;
+  }
+  .challenge-claim-btn:hover { background: var(--gold); color: #000; }
+  .challenge-claimed-mark {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--green);
+    flex-shrink: 0;
+    padding: 0 6px;
+  }
+
+  /* DAILY MAP CARD */
+  .daily-map-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(255, 150, 51, 0.12), rgba(255, 216, 102, 0.06));
+    border: 1px solid rgba(255, 150, 51, 0.35);
+    border-radius: 5px;
+    margin-bottom: 8px;
+  }
+  .daily-map-icon { font-size: 28px; flex-shrink: 0; }
+  .daily-map-info { flex: 1; min-width: 0; }
+  .daily-map-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--orange);
+    margin-bottom: 3px;
+  }
+  .daily-map-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #fff;
+  }
+  .daily-map-bonus {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 3px;
+  }
+  .daily-map-bonus span { color: var(--orange); font-weight: 700; }
+  .veto-btn {
+    background: rgba(255, 60, 60, 0.10);
+    border: 1px solid rgba(255, 60, 60, 0.45);
+    color: #ff5c7c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    pointer-events: all;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .veto-btn:hover { background: rgba(255, 60, 60, 0.20); }
+  .veto-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* VETO DIALOG */
+  #veto-dialog {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  #veto-dialog.show { display: flex; }
+  .veto-panel {
+    background: rgba(15, 18, 24, 0.96);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 26px 28px;
+    max-width: 460px;
+    width: calc(100% - 32px);
+    text-align: center;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  .veto-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 2.5px;
+    margin-bottom: 6px;
+    color: #ff5c7c;
+  }
+  .veto-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .veto-options { display: flex; gap: 10px; margin-bottom: 18px; }
+  .veto-option {
+    flex: 1;
+    background: rgba(20, 24, 32, 0.65);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 5px;
+    padding: 14px 8px;
+    cursor: pointer;
+    transition: all 0.18s;
+    pointer-events: all;
+  }
+  .veto-option:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.30);
+  }
+  .veto-option.current {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+  .veto-option .map-icon { font-size: 22px; margin-bottom: 6px; }
+  .veto-option .map-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+  .veto-cancel {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: var(--text-dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    padding: 10px 22px;
+    border-radius: 4px;
+    cursor: pointer;
+    pointer-events: all;
+  }
+  .veto-cancel:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+
+  /* PRESTIGE BUTTON */
+  .prestige-btn {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(184, 107, 255, 0.20), rgba(120, 60, 220, 0.12));
+    border: 1px solid var(--purple-border);
+    color: var(--purple);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    padding: 12px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    pointer-events: all;
+    transition: all 0.2s;
+    box-shadow: 0 0 16px rgba(184, 107, 255, 0.18);
+    margin-top: 2px;
+  }
+  .prestige-btn:hover {
+    background: linear-gradient(135deg, rgba(184, 107, 255, 0.32), rgba(120, 60, 220, 0.22));
+    box-shadow: 0 0 24px rgba(184, 107, 255, 0.40);
+  }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-160px);
+    z-index: 70;
+    background: rgba(20, 24, 32, 0.95);
+    border: 1px solid rgba(0, 212, 255, 0.45);
+    border-radius: 5px;
+    padding: 12px 22px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #00d4ff;
+    box-shadow: 0 0 22px rgba(0, 212, 255, 0.3);
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1.1);
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.rank-up {
+    border-color: rgba(255, 150, 51, 0.7);
+    color: #ff9633;
+    box-shadow: 0 0 28px rgba(255, 150, 51, 0.5);
+  }
+  #toast.prestige {
+    border-color: rgba(184, 107, 255, 0.7);
+    color: var(--purple);
+    box-shadow: 0 0 28px rgba(184, 107, 255, 0.55);
+  }
+
+  /* DASHBOARD SCROLL (content has grown) */
+  #dashboard {
+    overflow-y: auto;
+    align-items: flex-start;
+    padding: 24px 0;
+  }
+  .dash-content { margin: auto; }
+
+  /* RUN SUMMARY DETAIL ROW */
+  .run-summary-detail {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .run-summary-detail .stat-pill { display: inline-block; margin: 0 6px; }
+  .run-summary-detail .stat-pill .v { color: #ddd; font-weight: 700; }
+  .run-summary-detail .xp-earned { color: var(--xp-glow); font-weight: 700; }
+
+  /* MODE PICKER (4 cards on dashboard) */
+  .mode-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mode-card {
+    flex: 1 1 calc(50% - 4px);
+    background: rgba(20, 24, 32, 0.65);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 5px;
+    padding: 12px 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+    pointer-events: all;
+    text-align: center;
+    min-width: 0;
+  }
+  .mode-card:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .mode-card.active {
+    background: rgba(184, 107, 255, 0.22);
+    border-color: rgba(184, 107, 255, 1);
+    box-shadow: 0 0 24px rgba(184, 107, 255, 0.42), inset 0 0 12px rgba(184, 107, 255, 0.15);
+    transform: translateY(-1px);
+  }
+  .mode-card.active .mode-name { color: var(--purple); text-shadow: 0 0 6px rgba(184, 107, 255, 0.6); }
+  .mode-card .mode-icon { font-size: 22px; margin-bottom: 6px; }
+  .mode-card .mode-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .mode-card .mode-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+  }
+
+  /* WAVE BADGE (GAUNTLET in-game indicator) */
+  #wave-badge {
+    position: absolute;
+    top: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 60, 60, 0.15);
+    border: 1px solid rgba(255, 60, 60, 0.6);
+    border-radius: 4px;
+    color: #ff5c7c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    padding: 8px 16px;
+    display: none;
+    pointer-events: none;
+    box-shadow: 0 0 14px rgba(255, 60, 60, 0.25);
+  }
+  #wave-badge.show { display: flex; align-items: center; gap: 8px; }
+  #wave-badge .wave-icon { font-size: 14px; }
+
+  /* LIVES (TIME ATTACK in-game indicator) */
+  #lives-display {
+    position: absolute;
+    top: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 4px;
+    background: rgba(255, 60, 90, 0.12);
+    border: 1px solid rgba(255, 60, 90, 0.5);
+    border-radius: 4px;
+    padding: 8px 14px;
+    pointer-events: none;
+  }
+  #lives-display.show { display: flex; }
+  .heart {
+    font-size: 14px;
+    color: #ff3b6a;
+    text-shadow: 0 0 8px rgba(255, 59, 106, 0.7);
+    transition: all 0.25s;
+  }
+  .heart.lost { opacity: 0.15; filter: grayscale(1); }
+
+  /* LIFE LOST FLASH overlay (brief) */
+  #life-lost-flash {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle, transparent 0%, rgba(255,30,30,0.35) 100%);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 25;
+    transition: opacity 0.25s;
+  }
+  #life-lost-flash.show { opacity: 1; }
+
+  /* TOUCH CONTROLS (on-screen steering for tablets/phones) */
+  #touch-controls {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 18px;
+    z-index: 12;
+    pointer-events: none;
+  }
+  .touch-btn {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    background: rgba(8, 10, 14, 0.55);
+    border: 2px solid rgba(255,255,255,0.20);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 30px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    transition: transform 0.08s, background 0.12s;
+    touch-action: manipulation;
+  }
+  .touch-btn:active, .touch-btn.held {
+    transform: scale(0.92);
+    background: rgba(0, 212, 255, 0.30);
+    border-color: var(--blue);
+  }
+  .touch-btn.boost {
+    background: rgba(255, 150, 51, 0.18);
+    border-color: rgba(255, 150, 51, 0.45);
+    color: var(--orange);
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    width: 92px;
+  }
+  .touch-btn.boost:active, .touch-btn.boost.held {
+    background: rgba(255, 150, 51, 0.55);
+    border-color: var(--orange);
+    color: #fff;
+  }
+  /* Show only when the run is active */
+  #touch-controls:not(.show) { display: none; }
+
+  /* PRACTICE MODE in-game badge */
+  #practice-badge {
+    position: absolute;
+    top: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 255, 136, 0.14);
+    border: 1px solid rgba(0, 255, 136, 0.55);
+    border-radius: 4px;
+    color: var(--green);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 7px 16px;
+    display: none;
+    align-items: center;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    pointer-events: none;
+    z-index: 11;
+  }
+
+  .ovl-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 72px;
+    letter-spacing: 14px;
+    margin-bottom: 12px;
+    color: #fff;
+    text-shadow: 0 0 36px rgba(255,255,255,0.18);
+  }
+  .ovl-title.danger {
+    color: var(--red);
+    text-shadow: 0 0 30px rgba(255,59,59,0.4);
+    font-size: 56px;
+    letter-spacing: 10px;
+  }
+  .ovl-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 5px;
+    color: var(--text-dim);
+    margin-bottom: 36px;
+  }
+  .ovl-stats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 32px;
+    text-align: center;
+    line-height: 2;
+  }
+  .ovl-stats .big {
+    font-size: 24px;
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .btn-cta {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    letter-spacing: 4px;
+    padding: 14px 32px;
+    cursor: pointer;
+    transition: all 0.2s;
+    pointer-events: all;
+    font-weight: 700;
+  }
+  .btn-cta:hover { background: rgba(255,255,255,0.1); border-color: #fff; letter-spacing: 5px; }
+  .btn-cta.secondary {
+    color: var(--text-dim);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .btn-cta.secondary:hover {
+    color: #fff;
+    background: rgba(255, 80, 80, 0.10);
+    border-color: rgba(255, 80, 80, 0.55);
+  }
+  .pause-actions {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .pause-actions .btn-cta { flex: 1; min-width: 180px; }
+  .keys-hint { margin-top: 28px; font-size: 11px; color: var(--text-darker); letter-spacing: 2px; }
+  .keys-hint kbd {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 3px;
+    font-size: 10px;
+    color: #ccc;
+    margin: 0 2px;
+  }
+
+  /* ─── COUNTDOWN ─── */
+  #countdown-overlay {
+    position: fixed; inset: 0; z-index: 24;
+    display: none;
+    align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .countdown-num {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 200px;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -4px;
+    text-shadow: 0 0 40px rgba(0,212,255,0.5), 0 0 90px rgba(0,212,255,0.3);
+  }
+  .countdown-num.go {
+    color: var(--green);
+    font-size: 160px;
+    letter-spacing: 8px;
+    text-shadow: 0 0 40px rgba(0,255,136,0.7), 0 0 100px rgba(0,255,136,0.5);
+  }
+  @keyframes countdownPop {
+    0%   { transform: scale(2.4); opacity: 0; }
+    18%  { transform: scale(1); opacity: 1; }
+    82%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.5); opacity: 0; }
+  }
+  .countdown-num.animate { animation: countdownPop 1s ease-out forwards; }
+  @keyframes goPop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    20%  { transform: scale(1.15); opacity: 1; }
+    60%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  .countdown-num.go.animate { animation: goPop 0.5s ease-out forwards; }
+
+  /* ─── MODAL (Garage) ─── */
+  #shop-modal {
+    position: fixed; inset: 0; z-index: 30;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(10px);
+    pointer-events: all;
+  }
+  #shop-modal.open { display: flex; }
+
+  .shop-panel {
+    background: rgba(14, 16, 22, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 26px 32px 30px;
+    max-width: 980px;
+    width: 92%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+  }
+
+  .shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .shop-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: #fff;
+  }
+  .shop-balance {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .shop-close {
+    position: absolute;
+    top: 14px; right: 18px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+    transition: color 0.15s;
+  }
+  .shop-close:hover { color: #fff; }
+
+  .shop-tabs {
+    display: flex;
+    margin-bottom: 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .shop-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-dim);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: -1px;
+  }
+  .shop-tab:hover { color: #ccc; }
+  .shop-tab.active {
+    color: #fff;
+    border-bottom-color: var(--gold);
+  }
+
+  .shop-content {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+  }
+  .shop-content::-webkit-scrollbar { width: 6px; }
+  .shop-content::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+  .shop-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Car grid */
+  .car-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .car-card {
+    background: rgba(20, 24, 32, 0.85);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 5px;
+    padding: 14px;
+    transition: border-color 0.18s;
+  }
+  .car-card.owned { border-color: rgba(0, 212, 255, 0.25); }
+  .car-card.equipped { border-color: rgba(0, 212, 255, 0.8); box-shadow: 0 0 24px rgba(0,212,255,0.12); }
+
+  .car-preview {
+    background: linear-gradient(180deg, #1a1f2a 0%, #0f1218 100%);
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 86px;
+    position: relative;
+    overflow: hidden;
+  }
+  .car-preview:after {
+    content: '';
+    position: absolute;
+    left: 10%; right: 10%; bottom: 6px;
+    height: 5px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.45), transparent 70%);
+  }
+  .car-preview svg { width: 100%; max-width: 180px; }
+
+  .car-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .car-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .car-tag.rare { color: var(--rare); }
+  .car-tag.legendary { color: var(--gold); }
+  .car-tag.hypercar {
+    color: #00e5ff;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.55);
+  }
+
+  /* Universal item buttons (cards in either tab) */
+  .item-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 700;
+  }
+  .item-btn:hover:not(:disabled) {
+    background: rgba(255,255,255,0.08);
+    border-color: #fff;
+  }
+  .item-btn.buy { color: var(--gold); border-color: var(--gold-border); }
+  .item-btn.buy:hover:not(:disabled) { background: var(--gold-bg-hover); border-color: var(--gold); }
+  .item-btn.equip { color: var(--blue); border-color: rgba(0, 212, 255, 0.35); }
+  .item-btn.equip:hover { background: rgba(0,212,255,0.1); border-color: var(--blue); }
+  .item-btn.equipped { color: var(--blue); border-color: var(--blue); background: rgba(0,212,255,0.08); cursor: default; }
+  .item-btn:disabled:not(.equipped):not(.maxed) { opacity: 0.4; cursor: not-allowed; }
+  .item-btn.maxed { color: var(--gold); border-color: var(--gold); cursor: default; background: rgba(255,216,102,0.06); }
+
+  /* Upgrade cards */
+  .upgrade-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+    gap: 14px;
+  }
+  .upgrade-card {
+    background: rgba(20, 24, 32, 0.85);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 5px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.18s;
+  }
+  .upgrade-card.maxed { border-color: var(--gold-border); }
+
+  .upgrade-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .upgrade-icon {
+    font-size: 20px;
+    line-height: 1;
+    width: 28px;
+    text-align: center;
+    color: var(--gold);
+  }
+  .upgrade-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+  .upgrade-desc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    margin-left: 40px;
+    letter-spacing: 0.5px;
+  }
+  .upgrade-pips {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .pip {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px;
+  }
+  .pip.filled {
+    background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+    box-shadow: 0 0 6px rgba(255,216,102,0.4);
+  }
+
+  .upgrade-effect {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .upgrade-effect .current { color: var(--text-dim); }
+  .upgrade-effect .arrow { color: var(--text-darker); font-size: 12px; }
+  .upgrade-effect .next { color: #fff; font-weight: 700; }
+  .upgrade-effect .single { color: var(--gold); flex: 1; text-align: center; letter-spacing: 1px; }
+
+  /* Nitro flame cards */
+  .nitro-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+  }
+  .nitro-card {
+    background: rgba(20, 24, 32, 0.85);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 5px;
+    padding: 12px;
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .nitro-card.owned { border-color: rgba(255, 136, 68, 0.30); }
+  .nitro-card.equipped {
+    border-color: rgba(255, 136, 68, 0.85);
+    box-shadow: 0 0 24px rgba(255, 136, 68, 0.15);
+  }
+  .nitro-preview {
+    background: linear-gradient(180deg, #0a0c12 0%, #050608 100%);
+    border-radius: 3px;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+  }
+  .nitro-preview svg { width: 100%; max-width: 130px; }
+  .nitro-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    color: #fff;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  /* Coin pop animation */
+  @keyframes coinPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.18); color: var(--gold-bright); text-shadow: 0 0 12px rgba(255,242,0,0.8); }
+    100% { transform: scale(1); }
+  }
+  .coin-pop { animation: coinPop 0.35s ease-out; }
+
+  /* Vignette */
+  #vignette {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%);
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <!-- SPEEDOMETER -->
+  <div class="panel" id="speedo">
+    <div class="speedo-label">SPEED</div>
+    <div class="speedo-num-row">
+      <span class="speedo-value" id="speed-val">0</span>
+      <span class="speedo-unit">KM/H</span>
+    </div>
+    <div class="speedo-bar"><div class="speedo-fill" id="speed-fill"></div></div>
+    <div class="speedo-nitro" id="speedo-nitro">
+      <span class="bolt">⚡</span><span>BOOST</span>
+    </div>
+  </div>
+
+  <!-- TOP-RIGHT CONTROLS ROW -->
+  <div id="controls-row">
+    <button class="hud-btn" id="pause-btn" title="Pause (P)">
+      <svg viewBox="0 0 14 14"><rect x="3" y="2" width="3" height="10" rx="0.4"/><rect x="8" y="2" width="3" height="10" rx="0.4"/></svg>
+      <span>PAUSE</span>
+    </button>
+    <div class="hud-btn balance gold" id="coin-display">
+      <span class="coin-icon"></span>
+      <span id="coin-val">0</span>
+    </div>
+    <button class="hud-btn gold" id="shop-btn">GARAGE</button>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="panel" id="stats">
+    <div class="stat-cell">
+      <div class="stat-label">DIST</div>
+      <div class="stat-value" id="dist-val">0.00 KM</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-cell">
+      <div class="stat-label">SCORE</div>
+      <div class="stat-value" id="score-val">0</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-cell">
+      <div class="stat-label">BEST</div>
+      <div class="stat-value" id="best-val">0</div>
+    </div>
+  </div>
+
+  <!-- WARNING -->
+  <div id="warning">
+    <span class="warn-arrows" id="warn-left">◀</span>
+    INCOMING
+    <span class="warn-arrows" id="warn-right">▶</span>
+  </div>
+
+  <!-- RADAR -->
+  <div class="panel" id="radar">
+    <div id="radar-label">PROXIMITY</div>
+    <canvas id="radar-canvas" width="140" height="180"></canvas>
+  </div>
+
+  <!-- CONTROLS HINT -->
+  <div id="controls-hint">
+    <kbd>WASD</kbd> Steer<span class="sep">·</span><kbd>⇧</kbd> Boost<span class="sep">·</span><kbd>P</kbd> Pause
+  </div>
+
+  <!-- PRACTICE MODE BADGE -->
+  <div id="practice-badge" style="display:none">🏁 PRACTICE MODE</div>
+
+  <!-- GAUNTLET WAVE BADGE -->
+  <div id="wave-badge"><span class="wave-icon">🔥</span><span id="wave-text">WAVE 1</span></div>
+
+  <!-- TIME ATTACK LIVES -->
+  <div id="lives-display">
+    <span class="heart" id="heart-1">♥</span>
+    <span class="heart" id="heart-2">♥</span>
+    <span class="heart" id="heart-3">♥</span>
+  </div>
+</div>
+
+<!-- LIFE LOST FLASH (red vignette) -->
+<div id="life-lost-flash"></div>
+
+<!-- TOUCH CONTROLS (steering + boost on tablets) -->
+<div id="touch-controls">
+  <button class="touch-btn" id="touch-left" aria-label="Steer left">◀</button>
+  <button class="touch-btn boost" id="touch-boost" aria-label="Boost">BOOST</button>
+  <button class="touch-btn" id="touch-right" aria-label="Steer right">▶</button>
+</div>
+
+<div id="vignette"></div>
+
+<!-- DASHBOARD / HOME SCREEN -->
+<div id="dashboard">
+  <div class="dash-content">
+    <div class="dash-header">
+      <div class="dash-title">APEX DRIVE</div>
+      <div class="dash-sub" id="dash-sub">— READY TO RACE —</div>
+    </div>
+
+    <!-- Last run summary (only shown after a crash) -->
+    <div class="dash-card dash-last-run" id="dash-last-run" style="display:none">
+      <div class="dash-section-label">LAST RUN</div>
+      <div class="dash-row dash-three">
+        <div class="dash-stat">
+          <div class="lbl">DISTANCE</div>
+          <div class="val" id="dash-last-dist">0.00 KM</div>
+        </div>
+        <div class="dash-stat">
+          <div class="lbl">SCORE</div>
+          <div class="val" id="dash-last-score">0</div>
+        </div>
+        <div class="dash-stat">
+          <div class="lbl">COINS EARNED</div>
+          <div class="val gold"><span class="coin-icon"></span><span id="dash-last-coins">+0</span></div>
+        </div>
+      </div>
+      <div class="run-summary-detail" id="dash-last-detail"></div>
+    </div>
+
+    <!-- DRIVER RANK + XP -->
+    <div class="dash-card rank-card">
+      <div class="rank-row">
+        <div class="rank-badge" id="rank-badge">R</div>
+        <div class="rank-info">
+          <div class="rank-name-row">
+            <span class="rank-name" id="rank-name">ROOKIE</span>
+            <span class="rank-prestige-chip" id="rank-prestige" style="display:none">PRESTIGE 1◆</span>
+          </div>
+          <div class="rank-xp" id="rank-xp">0 / 600 XP — NEXT: PRO</div>
+        </div>
+      </div>
+      <div class="xp-bar-track"><div class="xp-bar-fill" id="rank-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- GAME MODE PICKER -->
+    <div class="dash-card">
+      <div class="dash-section-label">GAME MODE</div>
+      <div class="mode-row" id="mode-row"></div>
+    </div>
+
+    <!-- DAILY CHALLENGES -->
+    <div class="dash-card">
+      <div class="dash-section-label">DAILY CHALLENGES — RESETS AT MIDNIGHT</div>
+      <div class="challenges-list" id="challenges-list"></div>
+    </div>
+
+    <!-- Player profile -->
+    <div class="dash-card">
+      <div class="dash-row dash-two">
+        <div class="dash-stat">
+          <div class="lbl">BEST SCORE</div>
+          <div class="val" id="dash-best">0</div>
+        </div>
+        <div class="dash-stat">
+          <div class="lbl">COIN BALANCE</div>
+          <div class="val gold"><span class="coin-icon lg"></span><span id="dash-coins">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Map + map selection -->
+    <div class="dash-card">
+      <div class="dash-section-label">MAP</div>
+      <div class="daily-map-card">
+        <div class="daily-map-icon" id="daily-map-icon">🛣️</div>
+        <div class="daily-map-info">
+          <div class="daily-map-title">★ TODAY'S PICK</div>
+          <div class="daily-map-name" id="daily-map-name">HIGHWAY</div>
+          <div class="daily-map-bonus" id="daily-map-bonus"><span>+25% XP</span> on this map · resets at midnight</div>
+        </div>
+        <button class="veto-btn" id="veto-btn">VETO<br>100◆</button>
+      </div>
+      <div class="map-row" id="map-row"></div>
+    </div>
+
+    <!-- Current vehicle -->
+    <div class="dash-card">
+      <div class="dash-section-label">CURRENT VEHICLE</div>
+      <div class="dash-vehicle">
+        <div class="dash-car-preview" id="dash-car-preview"></div>
+        <div class="dash-vehicle-info">
+          <div class="dash-car-name" id="dash-car-name">PLATINUM</div>
+          <div class="dash-car-spec" id="dash-car-engine">V6 · 281 KM/H</div>
+          <div class="dash-car-spec" id="dash-car-aero">Stock aero</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="dash-actions">
+      <button class="btn-cta primary" id="dash-start">START RACE</button>
+      <button class="btn-cta gold-btn" id="dash-garage">◆ GARAGE</button>
+    </div>
+
+    <!-- Prestige (only visible when eligible) -->
+    <button class="prestige-btn" id="prestige-btn" style="display:none">◆ PRESTIGE — RESET FOR +15% COINS FOREVER ◆</button>
+
+    <div class="keys-hint dash-keys">
+      <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> steer &nbsp;·&nbsp; <kbd>SHIFT</kbd> boost &nbsp;·&nbsp; <kbd>P</kbd> pause &nbsp;·&nbsp; <kbd>SPACE</kbd> start
+    </div>
+  </div>
+</div>
+
+<!-- PAUSE SCREEN -->
+<div id="pause-overlay">
+  <div class="ovl-title">PAUSED</div>
+  <div class="ovl-sub">— ENGINE IDLING —</div>
+  <div class="pause-actions">
+    <button class="btn-cta" id="resume-btn">RESUME</button>
+    <button class="btn-cta secondary" id="exit-btn">EXIT TO DASH</button>
+  </div>
+  <div class="keys-hint">press <kbd>P</kbd> to resume</div>
+</div>
+
+<!-- COUNTDOWN -->
+<div id="countdown-overlay">
+  <div class="countdown-num" id="countdown-num">5</div>
+</div>
+
+<!-- TOAST notifications -->
+<div id="toast"></div>
+
+<!-- VETO DIALOG -->
+<div id="veto-dialog">
+  <div class="veto-panel">
+    <div class="veto-title">VETO TODAY'S MAP</div>
+    <div class="veto-sub">Spend 100◆ to swap today's featured map.<br>The +25% XP bonus follows your pick.</div>
+    <div class="veto-options" id="veto-options"></div>
+    <button class="veto-cancel" id="veto-cancel">CANCEL</button>
+  </div>
+</div>
+
+<!-- GARAGE MODAL -->
+<div id="shop-modal">
+  <div class="shop-panel">
+    <button class="shop-close" id="shop-close">✕</button>
+    <div class="shop-header">
+      <div class="shop-title">GARAGE</div>
+      <div class="shop-balance"><span class="coin-icon lg"></span><span id="shop-coin-val">0</span></div>
+    </div>
+    <div class="shop-tabs">
+      <button class="shop-tab active" data-tab="cars">CARS</button>
+      <button class="shop-tab" data-tab="upgrades">UPGRADES</button>
+      <button class="shop-tab" data-tab="nitro">NITRO</button>
+    </div>
+    <div class="shop-content">
+      <div class="tab-pane active" id="tab-cars">
+        <div class="car-grid" id="car-grid"></div>
+      </div>
+      <div class="tab-pane" id="tab-upgrades">
+        <div class="upgrade-grid" id="upgrade-grid"></div>
+      </div>
+      <div class="tab-pane" id="tab-nitro">
+        <div class="nitro-grid" id="nitro-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ═══════════════════════════════════════════════════════════════
+  // SCENE
+  // ═══════════════════════════════════════════════════════════════
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a2030);
+  scene.fog = new THREE.Fog(0x1a2030, 80, 320);
+
+  const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 600);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  document.body.appendChild(renderer.domElement);
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  // ─── LIGHTING ───
+  const ambient = new THREE.AmbientLight(0x4a5878, 0.35);
+  scene.add(ambient);
+  const hemi = new THREE.HemisphereLight(0xa0c8ff, 0x3a2a1a, 0.55);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffe2b0, 1.55);
+  sun.position.set(-40, 60, -20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+  sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+  sun.shadow.camera.near = 10; sun.shadow.camera.far = 150;
+  sun.shadow.bias = -0.0005;
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x5a8fff, 0.45);
+  rim.position.set(40, 30, 20);
+  scene.add(rim);
+
+  // ─── ROAD & WORLD ───
+  // ─── ROAD & WORLD ───
+  // Long planes are subdivided so we can curve them by displacing vertex X positions each frame.
+  // Each mesh stores a copy of its base vertex positions in userData.basePositions.
+  const curvableMeshes = [];
+  function makeCurvableLong(width, length, color, opts = {}) {
+    const geo = new THREE.PlaneGeometry(width, length, 1, 80);
+    const mat = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.95, metalness: 0.0 }, opts));
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.userData.basePositions = new Float32Array(geo.attributes.position.array);
+    curvableMeshes.push(mesh);
+    return mesh;
+  }
+  function makeCurvableLongBasic(width, length, color) {
+    const geo = new THREE.PlaneGeometry(width, length, 1, 80);
+    const mat = new THREE.MeshBasicMaterial({ color });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.userData.basePositions = new Float32Array(geo.attributes.position.array);
+    curvableMeshes.push(mesh);
+    return mesh;
+  }
+
+  const ROAD_WIDTH = 14;
+  const LANES = [-5.25, -1.75, 1.75, 5.25];
+
+  const road = makeCurvableLong(ROAD_WIDTH, 800, 0x222428);
+  road.position.z = 350;
+  road.receiveShadow = true;
+  scene.add(road);
+
+  [-1, 1].forEach(side => {
+    const sh = makeCurvableLong(1.5, 800, 0x2a2e34, { roughness: 1.0 });
+    sh.position.set(side * (ROAD_WIDTH/2 + 0.75), 0.005, 350);
+    scene.add(sh);
+  });
+
+  // Grass stays flat — it's the wide static background under everything.
+  const grass = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 800),
+    new THREE.MeshStandardMaterial({ color: 0x1f2a1c, roughness: 1.0 })
+  );
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.set(0, -0.05, 350);
+  grass.receiveShadow = true;
+  scene.add(grass);
+
+  const dashes = [];
+  const DASH_LEN = 3, DASH_GAP = 5, TOTAL_DASHES = 80;
+  const dashMat = new THREE.MeshBasicMaterial({ color: 0xe8e8d8 });
+  [-3.5, 3.5].forEach(x => {
+    for (let i = 0; i < TOTAL_DASHES; i++) {
+      const d = new THREE.Mesh(new THREE.PlaneGeometry(0.18, DASH_LEN), dashMat);
+      d.rotation.x = -Math.PI / 2;
+      d.position.set(x, 0.011, i * (DASH_LEN + DASH_GAP) - 40);
+      d.userData.baseX = x;
+      scene.add(d);
+      dashes.push(d);
+    }
+  });
+
+  [-0.12, 0.12].forEach(off => {
+    const line = makeCurvableLongBasic(0.12, 800, 0xe8c038);
+    line.position.set(off, 0.012, 350);
+    scene.add(line);
+  });
+
+  [-7, 7].forEach(x => {
+    const e = makeCurvableLongBasic(0.14, 800, 0xe8e8d8);
+    e.position.set(x, 0.012, 350);
+    scene.add(e);
+  });
+
+  const pylons = [];
+  for (let i = 0; i < 60; i++) {
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6),
+      new THREE.MeshStandardMaterial({ color: 0xe8e8d8 })
+    );
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.18, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 0.4 })
+    );
+    cap.position.y = 0.5;
+    const group = new THREE.Group();
+    group.add(pole); group.add(cap);
+    group.position.set(7.8, 0.8, i * 25 - 50);
+    group.userData.baseX = 7.8;
+    scene.add(group);
+    pylons.push(group);
+    const group2 = group.clone();
+    group2.position.x = -7.8;
+    group2.userData.baseX = -7.8;
+    scene.add(group2);
+    pylons.push(group2);
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const m = new THREE.Mesh(
+      new THREE.ConeGeometry(20 + Math.random()*15, 12 + Math.random()*10, 4),
+      new THREE.MeshStandardMaterial({ color: 0x141822, flatShading: true })
+    );
+    m.position.set(-80 + Math.random()*-40, 4, 100 + i*60);
+    m.rotation.y = Math.random();
+    scene.add(m);
+    const m2 = m.clone();
+    m2.position.x = 80 + Math.random()*40;
+    scene.add(m2);
+  }
+
+  // ─── ROADSIDE BILLBOARDS ───
+  const billboards = [];
+  const BILLBOARD_COLORS = [0xff6644, 0x4488ff, 0x44cc88, 0xddaa22, 0x9944dd, 0xee4488];
+  const BILLBOARD_SPACING = 90;
+  const BILLBOARD_COUNT = 8;
+  for (let i = 0; i < BILLBOARD_COUNT; i++) {
+    const side = i % 2 === 0 ? 1 : -1;
+    const grp = new THREE.Group();
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 6, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.9 })
+    );
+    post.position.y = 3;
+    post.castShadow = true;
+    grp.add(post);
+    const c = BILLBOARD_COLORS[i % BILLBOARD_COLORS.length];
+    const board = new THREE.Mesh(
+      new THREE.BoxGeometry(4.5, 2.8, 0.25),
+      new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, emissive: c, emissiveIntensity: 0.08 })
+    );
+    board.position.y = 5.6;
+    board.castShadow = true;
+    grp.add(board);
+    // Inner highlight rectangle to give it some "ad" texture
+    const inner = new THREE.Mesh(
+      new THREE.BoxGeometry(3.6, 2.0, 0.26),
+      new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.5 })
+    );
+    inner.position.set(0, 5.6, 0.005);
+    grp.add(inner);
+    grp.position.set(side * 14, 0, i * BILLBOARD_SPACING + 40);
+    grp.userData.baseX = side * 14;
+    grp.rotation.y = side > 0 ? -0.25 : 0.25;
+    scene.add(grp);
+    billboards.push(grp);
+  }
+
+  // ─── OVERHEAD GANTRIES ───
+  const gantries = [];
+  const GANTRY_SPACING = 220;
+  const GANTRY_COUNT = 4;
+  const gantryMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.7, metalness: 0.4 });
+  for (let i = 0; i < GANTRY_COUNT; i++) {
+    const grp = new THREE.Group();
+    [-1, 1].forEach(side => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.45, 8.4, 0.45), gantryMat);
+      post.position.set(side * 8.5, 4.2, 0);
+      post.castShadow = true;
+      grp.add(post);
+    });
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(17.8, 0.5, 0.6), gantryMat);
+    beam.position.set(0, 8.0, 0);
+    beam.castShadow = true;
+    grp.add(beam);
+    // Sign panel
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 1.9, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0x14304a, roughness: 0.4, emissive: 0x081020, emissiveIntensity: 0.6 })
+    );
+    sign.position.set(0, 6.6, 0);
+    grp.add(sign);
+    // Sign accent stripe
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(8.6, 0.18, 0.25),
+      new THREE.MeshBasicMaterial({ color: 0xfff8d0 })
+    );
+    stripe.position.set(0, 7.3, 0);
+    grp.add(stripe);
+    grp.position.set(0, 0, i * GANTRY_SPACING + 120);
+    grp.userData.baseX = 0;
+    scene.add(grp);
+    gantries.push(grp);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CAR BUILDER — GT2 RS-inspired
+  // ═══════════════════════════════════════════════════════════════
+  function buildCar(color, isPlayer = false, style = {}) {
+    const {
+      accentColor = 0x111111,
+      rimColor    = 0x404548,
+      wingScaleX  = 1.0,
+      wingScaleY  = 1.0,
+      hasDiffuser = false,
+      hasBigWing  = false,
+    } = style;
+    const car = new THREE.Group();
+
+    const shape = new THREE.Shape();
+    shape.moveTo(-2.10, 0.18);
+    shape.lineTo( 2.10, 0.18);
+    shape.lineTo( 2.10, 0.40);
+    shape.lineTo( 2.05, 0.62);
+    shape.lineTo( 1.55, 0.72);
+    shape.lineTo( 0.70, 0.74);
+    shape.lineTo( 0.40, 1.05);
+    shape.lineTo(-0.10, 1.22);
+    shape.lineTo(-0.85, 1.20);
+    shape.lineTo(-1.55, 0.92);
+    shape.lineTo(-1.95, 0.70);
+    shape.lineTo(-2.10, 0.55);
+    shape.lineTo(-2.10, 0.18);
+
+    const bodyGeo = new THREE.ExtrudeGeometry(shape, {
+      depth: 1.86, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 3, steps: 1
+    });
+    bodyGeo.translate(0, 0, -0.93);
+    bodyGeo.rotateY(Math.PI / 2);
+
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: 0.32,
+      metalness: 0.55,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.2,
+    });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    car.add(body);
+
+    [-1, 1].forEach(side => {
+      const h = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.55, 1.6), bodyMat);
+      h.position.set(side * 1.02, 0.55, -1.0);
+      h.castShadow = true;
+      car.add(h);
+    });
+    [-1, 1].forEach(side => {
+      const h = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.4, 1.0), bodyMat);
+      h.position.set(side * 1.00, 0.55, 1.3);
+      h.castShadow = true;
+      car.add(h);
+    });
+
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x070a12, roughness: 0.04, metalness: 0.0,
+      transparent: true, opacity: 0.78,
+      clearcoat: 1.0, clearcoatRoughness: 0.02,
+      envMapIntensity: 2.0,
+    });
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.04, 0.62), glassMat);
+    windshield.position.set(0, 1.18, 0.35);
+    windshield.rotation.x = -0.55;
+    car.add(windshield);
+
+    [-1, 1].forEach(side => {
+      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.38, 1.4), glassMat);
+      sw.position.set(side * 0.87, 1.05, -0.25);
+      car.add(sw);
+    });
+
+    const rw = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.85), glassMat);
+    rw.position.set(0, 1.04, -1.15);
+    rw.rotation.x = 0.7;
+    car.add(rw);
+
+    // ─── HEADLIGHTS (modern LED bar style) ───
+    const hlMat = new THREE.MeshStandardMaterial({
+      color: isPlayer ? 0xfff8dc : 0xddeeff,
+      emissive: isPlayer ? 0xfff8dc : 0xccddff,
+      emissiveIntensity: 1.4,
+      roughness: 0.15, metalness: 0.2
+    });
+    const hlGlowMat = new THREE.MeshBasicMaterial({ color: 0xffffcc, transparent: true, opacity: 0.35 });
+    [-0.65, 0.65].forEach(x => {
+      // Main LED bar - elongated, angled inward
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.10, 0.14), hlMat);
+      hl.position.set(x, 0.72, 2.03);
+      hl.rotation.y = (x < 0 ? 1 : -1) * 0.20;
+      car.add(hl);
+      // Glow halo
+      const glow = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.18, 0.05), hlGlowMat);
+      glow.position.set(x, 0.72, 2.07);
+      glow.rotation.y = (x < 0 ? 1 : -1) * 0.20;
+      car.add(glow);
+      // DRL accent line above headlight
+      const drl = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.025, 0.08),
+        new THREE.MeshBasicMaterial({ color: 0xddf0ff })
+      );
+      drl.position.set(x, 0.84, 2.03);
+      drl.rotation.y = (x < 0 ? 1 : -1) * 0.20;
+      car.add(drl);
+    });
+
+    // ─── FRONT GRILLE ───
+    const grilleMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.4, metalness: 0.5 });
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.18, 0.12), grilleMat);
+    grille.position.set(0, 0.42, 2.04);
+    car.add(grille);
+    // Horizontal grille slats
+    for (let i = 0; i < 3; i++) {
+      const slat = new THREE.Mesh(
+        new THREE.BoxGeometry(1.30, 0.018, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5, metalness: 0.7 })
+      );
+      slat.position.set(0, 0.34 + i * 0.06, 2.10);
+      car.add(slat);
+    }
+    // Lower air intakes flanking grille
+    [-1, 1].forEach(side => {
+      const intake = new THREE.Mesh(
+        new THREE.BoxGeometry(0.32, 0.14, 0.10),
+        grilleMat
+      );
+      intake.position.set(side * 0.80, 0.32, 2.05);
+      car.add(intake);
+    });
+
+    const splitter = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.05, 0.35),
+      new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.5 })
+    );
+    splitter.position.set(0, 0.22, 2.05);
+    car.add(splitter);
+
+    // ─── SIDE SKIRTS (rocker panels between front and rear wheels) ───
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.55, metalness: 0.15 });
+    [-1, 1].forEach(side => {
+      const skirt = new THREE.Mesh(
+        new THREE.BoxGeometry(0.10, 0.20, 2.20),
+        skirtMat
+      );
+      skirt.position.set(side * 1.04, 0.24, 0.05);
+      car.add(skirt);
+    });
+
+    const tlMat = new THREE.MeshStandardMaterial({
+      color: 0xff2030,
+      emissive: 0xff2030,
+      emissiveIntensity: 1.1,
+      roughness: 0.25
+    });
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.08, 0.05), tlMat);
+    tail.position.set(0, 0.78, -2.08);
+    car.add(tail);
+    const tailGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(1.85, 0.16, 0.02),
+      new THREE.MeshBasicMaterial({ color: 0xff5060, transparent: true, opacity: 0.40 })
+    );
+    tailGlow.position.set(0, 0.78, -2.09);
+    car.add(tailGlow);
+    // Brake light strip below
+    const brakeLight = new THREE.Mesh(
+      new THREE.BoxGeometry(0.85, 0.04, 0.03),
+      new THREE.MeshStandardMaterial({ color: 0xff4040, emissive: 0xff2020, emissiveIntensity: 0.7 })
+    );
+    brakeLight.position.set(0, 0.68, -2.08);
+    car.add(brakeLight);
+
+    // ─── REAR WING (scalable, optionally extended via aero kit) ───
+    const wingSpanMul  = wingScaleX * (hasBigWing ? 1.15 : 1.0);
+    const wingChordMul = wingScaleY * (hasBigWing ? 1.10 : 1.0);
+    const wingY        = 1.42 + (hasBigWing ? 0.22 : 0);
+    const strutH       = 0.45 + (hasBigWing ? 0.22 : 0);
+
+    const wingMat = new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.4, metalness: 0.3 });
+    [-0.7, 0.7].forEach(x => {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(0.08, strutH, 0.12), wingMat);
+      strut.position.set(x, wingY - strutH/2 - 0.02, -1.78);
+      strut.rotation.x = -0.15;
+      car.add(strut);
+    });
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(2.0 * wingSpanMul, 0.06, 0.5 * wingChordMul), wingMat);
+    wing.position.set(0, wingY, -1.85);
+    wing.rotation.x = -0.08;
+    wing.castShadow = true;
+    car.add(wing);
+    [-1, 1].forEach(side => {
+      const ep = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.5 * wingChordMul), wingMat);
+      ep.position.set(side * 1.00 * wingSpanMul, wingY + 0.01, -1.85);
+      car.add(ep);
+    });
+
+    // ─── REAR DIFFUSER (aero kit) ───
+    if (hasDiffuser) {
+      const dMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.55, metalness: 0.4 });
+      const dBase = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 0.55), dMat);
+      dBase.position.set(0, 0.20, -2.10);
+      dBase.rotation.x = -0.18;
+      car.add(dBase);
+      for (let i = -2; i <= 2; i++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.55), dMat);
+        fin.position.set(i * 0.42, 0.30, -2.13);
+        fin.rotation.x = -0.18;
+        car.add(fin);
+      }
+      // Exhaust tips flanking diffuser
+      const exhMat = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.3, metalness: 0.9 });
+      [-0.85, 0.85].forEach(x => {
+        const exh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 12), exhMat);
+        exh.rotation.x = Math.PI / 2;
+        exh.position.set(x, 0.46, -2.18);
+        car.add(exh);
+      });
+    }
+
+    // ─── SIDE MIRRORS (stalk + housing + reflective glass) ───
+    [-1, 1].forEach(side => {
+      const stalk = new THREE.Mesh(
+        new THREE.BoxGeometry(0.20, 0.04, 0.05),
+        bodyMat
+      );
+      stalk.position.set(side * 1.10, 1.02, 0.70);
+      car.add(stalk);
+
+      const housing = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.13, 0.22),
+        bodyMat
+      );
+      housing.position.set(side * 1.22, 1.02, 0.66);
+      housing.rotation.y = side * -0.15;
+      housing.castShadow = true;
+      car.add(housing);
+
+      const mirrorGlass = new THREE.Mesh(
+        new THREE.BoxGeometry(0.025, 0.10, 0.18),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x1a2030, roughness: 0.05, metalness: 0.9,
+          clearcoat: 1.0, clearcoatRoughness: 0.03,
+        })
+      );
+      mirrorGlass.position.set(side * 1.30, 1.02, 0.66);
+      mirrorGlass.rotation.y = side * -0.15;
+      car.add(mirrorGlass);
+    });
+
+    const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.32, 22);
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.95 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: rimColor, roughness: 0.22, metalness: 0.90 });
+    const rimDarkColor = new THREE.Color(rimColor).multiplyScalar(0.35);
+    const rimDarkMat = new THREE.MeshStandardMaterial({ color: rimDarkColor, roughness: 0.5, metalness: 0.6 });
+    const brakeMat = new THREE.MeshStandardMaterial({ color: 0xcc4400, roughness: 0.4, metalness: 0.6, emissive: 0x331100, emissiveIntensity: 0.25 });
+    // Pre-translated spoke so it extends radially from the wheel center
+    const spokeGeo = new THREE.BoxGeometry(0.07, 0.30, 0.05);
+    spokeGeo.translate(0, 0.16, 0);
+    const wheels = [];
+    const wheelPositions = [
+      [ 1.04, 0.42,  1.42], [-1.04, 0.42,  1.42],
+      [ 1.04, 0.42, -1.32], [-1.04, 0.42, -1.32],
+    ];
+    wheelPositions.forEach((pos) => {
+      const wg = new THREE.Group();
+      wg.position.set(...pos);
+      const isLeft = pos[0] > 0;
+      const outwardSign = isLeft ? 1 : -1;
+
+      // Tire
+      const tire = new THREE.Mesh(wheelGeo, tireMat);
+      tire.rotation.z = Math.PI / 2;
+      tire.castShadow = true;
+      wg.add(tire);
+
+      // Inner wheel face (dark recessed background behind spokes)
+      const face = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.34, 0.34, 0.04, 18),
+        rimDarkMat
+      );
+      face.rotation.z = Math.PI / 2;
+      face.position.x = outwardSign * 0.08;
+      wg.add(face);
+
+      // Outer rim ring (bright metallic torus)
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.36, 0.026, 8, 24),
+        rimMat
+      );
+      ring.rotation.y = Math.PI / 2;
+      ring.position.x = outwardSign * 0.13;
+      wg.add(ring);
+
+      // 5 spokes radiating from center to rim
+      for (let i = 0; i < 5; i++) {
+        const angle = (i / 5) * Math.PI * 2;
+        const spoke = new THREE.Mesh(spokeGeo, rimMat);
+        spoke.position.x = outwardSign * 0.11;
+        spoke.rotation.x = angle;
+        wg.add(spoke);
+      }
+
+      // Center cap
+      const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.08, 0.05, 14),
+        new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.4, metalness: 0.7 })
+      );
+      cap.rotation.z = Math.PI / 2;
+      cap.position.x = outwardSign * 0.14;
+      wg.add(cap);
+      // Cap bolt detail
+      const bolt = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.03, 0.02, 6),
+        rimMat
+      );
+      bolt.rotation.z = Math.PI / 2;
+      bolt.position.x = outwardSign * 0.17;
+      wg.add(bolt);
+
+      // Brake caliper (inner side, behind wheel face)
+      const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.20, 0.24), brakeMat);
+      caliper.position.x = -outwardSign * 0.08;
+      caliper.position.y = 0.18;
+      wg.add(caliper);
+      car.add(wg);
+      wheels.push(wg);
+    });
+    car.userData.wheels = wheels;
+
+    const shadowBlob = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 4.6),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })
+    );
+    shadowBlob.rotation.x = -Math.PI / 2;
+    shadowBlob.position.y = 0.02;
+    car.add(shadowBlob);
+
+    // Engine flames (player only) — invisible by default, lit by boost
+    if (isPlayer) {
+      const flames = [];
+      [-0.5, 0.5].forEach(x => {
+        const outer = new THREE.Mesh(
+          new THREE.ConeGeometry(0.18, 0.85, 12),
+          new THREE.MeshBasicMaterial({
+            color: 0xff7a20, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          })
+        );
+        outer.position.set(x, 0.42, -2.55);
+        outer.rotation.x = -Math.PI / 2;  // tip points -Z (behind car)
+        car.add(outer);
+
+        const inner = new THREE.Mesh(
+          new THREE.ConeGeometry(0.10, 0.55, 10),
+          new THREE.MeshBasicMaterial({
+            color: 0xffe080, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          })
+        );
+        inner.position.set(x, 0.42, -2.40);
+        inner.rotation.x = -Math.PI / 2;
+        car.add(inner);
+
+        flames.push({ outer, inner });
+      });
+      car.userData.flames = flames;
+    }
+
+    return car;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CAR CATALOG
+  // ═══════════════════════════════════════════════════════════════
+  const CAR_CATALOG = [
+    { id: 'platinum',  name: 'PLATINUM',   tag: 'standard',  color: 0xd4d8dc, price: 0 },
+    { id: 'crimson',   name: 'CRIMSON',    tag: 'standard',  color: 0xb01818, price: 50 },
+    { id: 'solar',     name: 'SOLAR',      tag: 'standard',  color: 0xe8b820, price: 100 },
+    { id: 'obsidian',  name: 'OBSIDIAN',   tag: 'standard',  color: 0x14161a, price: 150 },
+    { id: 'arctic',    name: 'ARCTIC',     tag: 'standard',  color: 0xf2f4f6, price: 200 },
+    { id: 'cobalt',    name: 'COBALT',     tag: 'rare',      color: 0x1a4ec0, price: 350 },
+    { id: 'acidlime',  name: 'ACID LIME',  tag: 'rare',      color: 0x9fdc1a, price: 500 },
+    { id: 'aqua',      name: 'AQUAMARINE', tag: 'rare',      color: 0x1ec4b4, price: 650 },
+    { id: 'magenta',   name: 'VIOLET',     tag: 'legendary', color: 0x8a1ab0, price: 1000 },
+    { id: 'phantom',   name: 'PHANTOM',    tag: 'legendary', color: 0x4a4e58, price: 1500 },
+    // ─── HYPERCAR TIER ───
+    { id: 'hyperion',  name: 'HYPERION',   tag: 'hypercar',  color: 0x0040b0, price: 2500,
+      style: { rimColor: 0xd4a017, accentColor: 0x000000, wingScaleX: 1.08 } },
+    { id: 'veyroc',    name: 'VEYROC',     tag: 'hypercar',  color: 0x0a0a18, price: 4000,
+      style: { rimColor: 0xd4a017, accentColor: 0xd4a017, wingScaleX: 1.12 } },
+    { id: 'meridian',  name: 'MERIDIAN',   tag: 'hypercar',  color: 0x8a1010, price: 6000,
+      style: { rimColor: 0x101010, accentColor: 0x000000, wingScaleX: 1.15, wingScaleY: 1.08 } },
+    { id: 'nyx',       name: 'NYX',        tag: 'hypercar',  color: 0x050508, price: 9000,
+      style: { rimColor: 0xff3300, accentColor: 0xff3300, wingScaleX: 1.20, wingScaleY: 1.10 } },
+  ];
+  const getCarById = id => CAR_CATALOG.find(c => c.id === id);
+
+  // ═══════════════════════════════════════════════════════════════
+  // UPGRADES — per-level effects applied to gameplay
+  // ═══════════════════════════════════════════════════════════════
+  const ENGINE_MAX   = [78,   87,   96,   105,  114];   // m/s base top speed
+  const ENGINE_BOOST = [105,  117,  129,  141,  153];   // m/s with boost
+  const GRIP_RATE    = [6,    8,    10,   13];          // lane-change lerp factor
+  const NITRO_MULT   = [1.5,  1.75, 2.0,  2.5];         // accel multiplier during boost
+  const SCORE_MULT   = [1,    1.5,  2,    3];
+  const COIN_REWARD  = [10,   15,   25,   40];
+
+  const UPGRADES = [
+    {
+      id: 'engine', name: 'ENGINE', icon: '⚙', description: 'Powertrain swap',
+      effects: [
+        'V6 · 281 KM/H',
+        'V8 · 313 KM/H',
+        'V10 · 345 KM/H',
+        'V12 · 378 KM/H',
+        'V12 BiTurbo · 410 KM/H'
+      ],
+      prices:  [0, 200, 600, 1500, 3500]
+    },
+    {
+      id: 'aero', name: 'AERO KIT', icon: '⬡', description: 'Rear diffuser & wing',
+      effects: ['Stock', '+ Diffuser', '+ Extended Wing', '+ Full Aero Kit'],
+      prices:  [0, 350, 900, 2200]
+    },
+    {
+      id: 'grip', name: 'GRIP', icon: '◈', description: 'Steering response',
+      effects: ['Stock', '+33%', '+66%', '+116%'],
+      prices:  [0, 150, 400, 1000]
+    },
+    {
+      id: 'nitro', name: 'NITRO', icon: '▲', description: 'Boost acceleration',
+      effects: NITRO_MULT.map(v => v + '× accel'),
+      prices:  [0, 250, 700, 1800]
+    },
+    {
+      id: 'multiplier', name: 'SCORE', icon: '★', description: 'Score multiplier',
+      effects: SCORE_MULT.map(v => v + '×'),
+      prices:  [0, 300, 800, 2000]
+    },
+    {
+      id: 'coinBonus', name: 'COIN GAIN', icon: '◆', description: 'Coins per dodge',
+      effects: COIN_REWARD.map(v => v + ' / dodge'),
+      prices:  [0, 200, 550, 1400]
+    }
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // NITRO FLAME COLORS (cosmetic — applies to exhaust flames on boost)
+  // ═══════════════════════════════════════════════════════════════
+  const NITRO_COLORS = [
+    { id: 'amber',   name: 'AMBER',   outer: 0xff7a20, inner: 0xffe080, price: 0 },
+    { id: 'cyan',    name: 'CYAN',    outer: 0x00b0ff, inner: 0xa0ecff, price: 300 },
+    { id: 'violet',  name: 'VIOLET',  outer: 0xb028ff, inner: 0xe8c0ff, price: 500 },
+    { id: 'crimson', name: 'CRIMSON', outer: 0xff2040, inner: 0xffa0a0, price: 700 },
+    { id: 'emerald', name: 'EMERALD', outer: 0x10cc50, inner: 0xa8ffc0, price: 900 },
+    { id: 'gold',    name: 'GOLD',    outer: 0xffd040, inner: 0xfff8c0, price: 1300 },
+    { id: 'plasma',  name: 'PLASMA',  outer: 0xff00aa, inner: 0x80f0ff, price: 1800 },
+    { id: 'ghost',   name: 'GHOST',   outer: 0xc8e0ff, inner: 0xffffff, price: 2500 },
+  ];
+  const getNitroById = id => NITRO_COLORS.find(n => n.id === id);
+
+  // ═══════════════════════════════════════════════════════════════
+  // RANKS, XP, AND DAILY CHALLENGE POOLS
+  // ═══════════════════════════════════════════════════════════════
+  // Ranks scale: each tier costs ~2-3x the previous one
+  const RANKS = [
+    { id: 0, name: 'ROOKIE', xp: 0,     color: '#9ec3ff' },
+    { id: 1, name: 'PRO',    xp: 600,   color: '#6cdc83' },
+    { id: 2, name: 'ELITE',  xp: 2000,  color: '#ffb84d' },
+    { id: 3, name: 'LEGEND', xp: 5000,  color: '#ff5c7c' },
+    { id: 4, name: 'APEX',   xp: 12000, color: '#b86bff' }
+  ];
+
+  // Daily challenge templates. One easy + one medium + one hard rolled each day.
+  // type: 'dodge' | 'pickup' | 'distance' | 'score' | 'topSpeed'
+  // mode: 'session' (best single run today) | 'cumulative' (sum across runs today)
+  // label uses {target} placeholder
+  const CHALLENGE_POOL_EASY = [
+    { id: 'e_dodge20',  type: 'dodge',    mode: 'cumulative', target: 20,  label: 'Dodge {target} cars today',         coin: 100, xp: 50,  icon: '🚗', tier: 'easy' },
+    { id: 'e_dodge40',  type: 'dodge',    mode: 'cumulative', target: 40,  label: 'Dodge {target} cars today',         coin: 120, xp: 60,  icon: '🚗', tier: 'easy' },
+    { id: 'e_pickup5',  type: 'pickup',   mode: 'cumulative', target: 5,   label: 'Collect {target} coin pickups',     coin: 100, xp: 50,  icon: '◆',  tier: 'easy' },
+    { id: 'e_dist2',    type: 'distance', mode: 'cumulative', target: 2,   label: 'Travel {target} km today',          coin: 100, xp: 50,  icon: '📏', tier: 'easy' },
+    { id: 'e_speed300', type: 'topSpeed', mode: 'session',    target: 300, label: 'Hit {target} km/h',                 coin: 100, xp: 50,  icon: '⚡', tier: 'easy' }
+  ];
+  const CHALLENGE_POOL_MEDIUM = [
+    { id: 'm_dodge75',  type: 'dodge',    mode: 'session',    target: 75,   label: 'Dodge {target} cars in one run',    coin: 300, xp: 150, icon: '🚗', tier: 'medium' },
+    { id: 'm_dist4',    type: 'distance', mode: 'session',    target: 4,    label: 'Travel {target} km in one run',     coin: 300, xp: 150, icon: '📏', tier: 'medium' },
+    { id: 'm_score5k',  type: 'score',    mode: 'session',    target: 5000, label: 'Score {target} in one run',         coin: 300, xp: 150, icon: '★',  tier: 'medium' },
+    { id: 'm_speed380', type: 'topSpeed', mode: 'session',    target: 380,  label: 'Hit {target} km/h',                 coin: 300, xp: 150, icon: '⚡', tier: 'medium' },
+    { id: 'm_pickup10', type: 'pickup',   mode: 'cumulative', target: 10,   label: 'Collect {target} coin pickups today', coin: 300, xp: 150, icon: '◆', tier: 'medium' }
+  ];
+  const CHALLENGE_POOL_HARD = [
+    { id: 'h_dodge150', type: 'dodge',    mode: 'session', target: 150,   label: 'Dodge {target} cars in one run', coin: 800, xp: 400, icon: '🚗', tier: 'hard' },
+    { id: 'h_dist6',    type: 'distance', mode: 'session', target: 6,     label: 'Travel {target} km in one run',  coin: 800, xp: 400, icon: '📏', tier: 'hard' },
+    { id: 'h_score12k', type: 'score',    mode: 'session', target: 12000, label: 'Score {target} in one run',      coin: 800, xp: 400, icon: '★',  tier: 'hard' },
+    { id: 'h_speed420', type: 'topSpeed', mode: 'session', target: 420,   label: 'Hit {target} km/h',              coin: 800, xp: 400, icon: '⚡', tier: 'hard' }
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // GAME MODES — different rule sets layered on top of any map
+  // ═══════════════════════════════════════════════════════════════
+  const MODES = [
+    {
+      id: 'classic',
+      name: 'CLASSIC',
+      icon: '🏁',
+      tagline: 'Standard run — one life',
+      countsForBest: true,
+      lives: 1,
+      gauntlet: false,
+      ghost: false,
+      coinMult: 1.0,
+      xpMult: 1.0
+    },
+    {
+      id: 'gauntlet',
+      name: 'GAUNTLET',
+      icon: '🔥',
+      tagline: 'Traffic ramps every 25s',
+      countsForBest: true,
+      lives: 1,
+      gauntlet: true,
+      ghost: false,
+      coinMult: 1.5,
+      xpMult: 1.5
+    },
+    {
+      id: 'time_attack',
+      name: 'TIME ATTACK',
+      icon: '❤️',
+      tagline: '3 lives — survive longer',
+      countsForBest: true,
+      lives: 3,
+      gauntlet: false,
+      ghost: false,
+      coinMult: 1.2,
+      xpMult: 1.2
+    },
+    {
+      id: 'ghost',
+      name: 'GHOST',
+      icon: '👻',
+      tagline: 'Coming next update',
+      countsForBest: false,
+      lives: 1,
+      gauntlet: false,
+      ghost: true,
+      coinMult: 1.0,
+      xpMult: 1.0
+    }
+  ];
+  const getModeById = id => MODES.find(m => m.id === id) || MODES[0];
+
+  // ═══════════════════════════════════════════════════════════════
+  // MAPS — different environments with different driving feel
+  // ═══════════════════════════════════════════════════════════════
+  const MAPS = [
+    {
+      id: 'highway',
+      name: 'HIGHWAY',
+      icon: '🛣️',
+      tagline: 'Classic dusk drive',
+      sceneBg: 0x1a2030,
+      fogColor: 0x1a2030, fogNear: 80, fogFar: 320,
+      grassColor: 0x1f2a1c,
+      roadColor: 0x222428,
+      sunColor: 0xffe2b0, sunIntensity: 1.55,
+      rimColor: 0x5a8fff, rimIntensity: 0.45,
+      ambientColor: 0x4a5878, ambientIntensity: 0.35,
+      hemiSky: 0xa0c8ff, hemiGround: 0x3a2a1a, hemiIntensity: 0.55,
+      trafficCount: 5, trafficSpeedMin: 18, trafficSpeedMax: 32,
+      pickupRate: 0.55,
+      curvesEnabled: true,
+      showProps: true,
+      allowCollisions: true, countsForBest: true,
+    },
+    {
+      id: 'sunset',
+      name: 'SUNSET COAST',
+      icon: '🌅',
+      tagline: 'Golden-hour run',
+      sceneBg: 0x4a1a3a,
+      fogColor: 0xff6840, fogNear: 50, fogFar: 240,
+      grassColor: 0x3a2018,
+      roadColor: 0x282022,
+      sunColor: 0xff7030, sunIntensity: 1.85,
+      rimColor: 0xff80a0, rimIntensity: 0.55,
+      ambientColor: 0x8a3530, ambientIntensity: 0.40,
+      hemiSky: 0xff80a0, hemiGround: 0x401820, hemiIntensity: 0.65,
+      trafficCount: 5, trafficSpeedMin: 16, trafficSpeedMax: 30,
+      pickupRate: 0.55,
+      curvesEnabled: true,
+      showProps: true,
+      allowCollisions: true, countsForBest: true,
+    },
+    {
+      id: 'practice',
+      name: 'PRACTICE',
+      icon: '🏁',
+      tagline: 'No traffic · no crashes',
+      sceneBg: 0x88c5ed,
+      fogColor: 0x88c5ed, fogNear: 140, fogFar: 480,
+      grassColor: 0x4a8f3a,
+      roadColor: 0x3a3c40,
+      sunColor: 0xffffff, sunIntensity: 1.65,
+      rimColor: 0xfff0c0, rimIntensity: 0.40,
+      ambientColor: 0xa0b8cc, ambientIntensity: 0.55,
+      hemiSky: 0xc8e0f8, hemiGround: 0x5a7050, hemiIntensity: 0.65,
+      trafficCount: 0, trafficSpeedMin: 12, trafficSpeedMax: 18,
+      pickupRate: 1.40,
+      curvesEnabled: false,
+      showProps: false,
+      allowCollisions: false, countsForBest: false,
+    },
+  ];
+  const getMap = id => MAPS.find(m => m.id === id) || MAPS[0];
+  const getMapById = getMap;   // alias for legacy references
+
+  // ═══════════════════════════════════════════════════════════════
+  // PLAYER CAR & STATE
+  // ═══════════════════════════════════════════════════════════════
+  const TRAFFIC_COLORS = [0x8a1a1a, 0x1a3a8a, 0x2a2a2a, 0xc8a030, 0x1a5a3a, 0x6a2a8a, 0xd0d0d0, 0x8a4a1a];
+
+  const state = {
+    running: false, crashed: false, paused: false,
+    countdown: 0, displayedCountdown: null,
+    speed: 0,
+    targetLaneIdx: 2, laneX: LANES[2], actualX: LANES[2],
+    distance: 0, score: 0, best: 0, coins: 0,
+    runStartCoins: 0, lastRunCoins: 0,
+    ownedCars: ['platinum'], currentCar: 'platinum',
+    unlockedNitros: ['amber'], currentNitro: 'amber',
+    currentMap: 'highway',
+    currentMode: 'classic',
+    // Mode-specific (set per run by start())
+    lives: 1, invulnerable: 0,             // for TIME ATTACK
+    gauntletWave: 1, gauntletExtra: 0, gauntletRampTimer: 25, // for GAUNTLET
+    upgrades: { engine: 0, aero: 0, grip: 0, nitro: 0, multiplier: 0, coinBonus: 0 },
+    roll: 0, traffic: [], pickups: [], warningSide: 0, cameraShake: 0,
+    // Road curvature — bends the visual road over time
+    curveTarget: 0, curveValue: 0, curveTimer: 4 + Math.random() * 3,
+    // PROGRESSION
+    xp: 0, prestige: 0,
+    dailyDate: '',          // 'YYYY-M-D'  resets nightly
+    dailyChallenges: [],    // generated daily
+    dailyMapId: 'highway',  // featured map for the day (gives +25% XP)
+    dailyMapVetoed: false,
+    // RUN-LOCAL STATS (reset each start())
+    runStats: { dodges: 0, pickups: 0, topSpeed: 0, xpEarned: 0 }
+  };
+
+  // Cached active map definition (refreshed by applyMap)
+  let activeMap = getMap(state.currentMap);
+
+  function applyMap(mapId) {
+    state.currentMap = mapId;
+    activeMap = getMap(mapId);
+    scene.background = new THREE.Color(activeMap.sceneBg);
+    scene.fog.color.setHex(activeMap.fogColor);
+    scene.fog.near = activeMap.fogNear;
+    scene.fog.far  = activeMap.fogFar;
+    grass.material.color.setHex(activeMap.grassColor);
+    road.material.color.setHex(activeMap.roadColor);
+    sun.color.setHex(activeMap.sunColor);
+    sun.intensity = activeMap.sunIntensity;
+    rim.color.setHex(activeMap.rimColor);
+    rim.intensity = activeMap.rimIntensity;
+    ambient.color.setHex(activeMap.ambientColor);
+    ambient.intensity = activeMap.ambientIntensity;
+    hemi.color.setHex(activeMap.hemiSky);
+    hemi.groundColor.setHex(activeMap.hemiGround);
+    hemi.intensity = activeMap.hemiIntensity;
+    // Hide highway-only roadside props on minimalist maps
+    billboards.forEach(b => b.visible = activeMap.showProps);
+    gantries.forEach(g => g.visible = activeMap.showProps);
+    // Show practice badge only when on practice map
+    const pb = document.getElementById('practice-badge');
+    if (pb) pb.style.display = (mapId === 'practice') ? 'flex' : 'none';
+  }
+
+  // How far ahead the road bends. Player drives in straight-line lane logic; only
+  // visuals follow the curve. z² shape means near-player is straight, far-ahead bends.
+  function curveOffset(worldZ) {
+    const z = Math.max(0, worldZ);
+    return state.curveValue * z * z * 0.00009;
+  }
+
+  // Build the player's car with its current paint style + current aero upgrade level
+  function buildPlayerCar() {
+    const carDef = getCarById(state.currentCar);
+    const aeroLvl = state.upgrades.aero;
+    const aeroStyle = {
+      hasDiffuser: aeroLvl >= 1,
+      hasBigWing:  aeroLvl >= 2,
+    };
+    const car = buildCar(carDef.color, true, { ...(carDef.style || {}), ...aeroStyle });
+    // Apply current nitro flame color
+    const n = getNitroById(state.currentNitro);
+    if (n && car.userData.flames) {
+      car.userData.flames.forEach(({ outer, inner }) => {
+        outer.material.color.setHex(n.outer);
+        inner.material.color.setHex(n.inner);
+      });
+    }
+    return car;
+  }
+
+  let playerCar = buildPlayerCar();
+  scene.add(playerCar);
+
+  const ACCEL = 22;
+  const BRAKE = 55;
+  const DRAG = 4;
+  playerCar.position.set(state.laneX, 0, 0);
+
+  // ═══════════════════════════════════════════════════════════════
+  // INPUT
+  // ═══════════════════════════════════════════════════════════════
+  const keys = {};
+  // Always trust the OS-tracked modifier state — never miss a Shift press.
+  function syncModifiers(e) {
+    keys['shift'] = !!e.shiftKey;
+  }
+  addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    syncModifiers(e);
+    if (e.key === 'ArrowLeft'  || e.key.toLowerCase() === 'a') tryLaneChange(1);
+    if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') tryLaneChange(-1);
+    if (e.key.toLowerCase() === 'r' && state.crashed) restart();
+    if (e.key.toLowerCase() === 'p') togglePause();
+    if (e.key === 'Escape') closeShop();
+    // Space / Enter starts a race from the dashboard
+    if ((e.key === ' ' || e.key === 'Enter') && !state.running &&
+        document.getElementById('dashboard').style.display === 'flex' &&
+        !document.getElementById('shop-modal').classList.contains('open')) {
+      e.preventDefault();
+      start();
+    }
+  });
+  addEventListener('keyup', e => {
+    keys[e.key.toLowerCase()] = false;
+    syncModifiers(e);
+  });
+  // Clear stuck keys if the user tabs away mid-press
+  addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+  // ─── ON-SCREEN TOUCH CONTROLS (steer + boost) ───
+  const touchLeft  = document.getElementById('touch-left');
+  const touchRight = document.getElementById('touch-right');
+  const touchBoost = document.getElementById('touch-boost');
+  // Steer on touch start (single tap → one lane shift) — also fires for mouse clicks.
+  function bindTouchSteer(el, dir) {
+    const handler = e => {
+      e.preventDefault();
+      el.classList.add('held');
+      tryLaneChange(dir);
+    };
+    const release = () => el.classList.remove('held');
+    el.addEventListener('touchstart', handler, { passive: false });
+    el.addEventListener('mousedown',  handler);
+    el.addEventListener('touchend',   release);
+    el.addEventListener('mouseup',    release);
+    el.addEventListener('mouseleave', release);
+    el.addEventListener('touchcancel',release);
+  }
+  bindTouchSteer(touchLeft,  1);
+  bindTouchSteer(touchRight, -1);
+  // Boost: held = Shift down, released = Shift up
+  function bindTouchBoost() {
+    const press = e => {
+      e.preventDefault();
+      touchBoost.classList.add('held');
+      keys['shift'] = true;
+    };
+    const release = () => {
+      touchBoost.classList.remove('held');
+      keys['shift'] = false;
+    };
+    touchBoost.addEventListener('touchstart', press, { passive: false });
+    touchBoost.addEventListener('mousedown',  press);
+    touchBoost.addEventListener('touchend',   release);
+    touchBoost.addEventListener('mouseup',    release);
+    touchBoost.addEventListener('mouseleave', release);
+    touchBoost.addEventListener('touchcancel',release);
+  }
+  bindTouchBoost();
+  // Show/hide touch controls based on whether we're racing.
+  function setTouchControlsVisible(visible) {
+    document.getElementById('touch-controls').classList.toggle('show', visible);
+  }
+
+  function tryLaneChange(dir) {
+    if (!state.running || state.crashed) return;
+    if (state.paused || state.countdown > 0) return;
+    const next = state.targetLaneIdx + dir;
+    if (next >= 0 && next < LANES.length) {
+      state.targetLaneIdx = next;
+      state.laneX = LANES[next];
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // TRAFFIC
+  // ═══════════════════════════════════════════════════════════════
+  function spawnCar() {
+    const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    const oncoming = lane < 0;
+    let spawnZ = 200 + Math.random() * 140;
+    let attempts = 0;
+    while (attempts < 5) {
+      const conflict = state.traffic.some(t =>
+        Math.abs(t.lane - lane) < 0.5 && Math.abs(t.mesh.position.z - spawnZ) < 35
+      );
+      if (!conflict) break;
+      spawnZ += 30; attempts++;
+    }
+    const color = TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)];
+    const mesh = buildCar(color, false);
+    mesh.position.set(lane, 0, spawnZ);
+    if (oncoming) mesh.rotation.y = Math.PI;
+    scene.add(mesh);
+    const speed = activeMap.trafficSpeedMin + Math.random() * (activeMap.trafficSpeedMax - activeMap.trafficSpeedMin);
+    state.traffic.push({ mesh, lane, speed, oncoming, crashedFlag: false, passed: false });
+  }
+
+  function clearTraffic() {
+    state.traffic.forEach(t => scene.remove(t.mesh));
+    state.traffic = [];
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // COIN PICKUPS (collectibles on the road)
+  // ═══════════════════════════════════════════════════════════════
+  const pickupGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.10, 18);
+  const pickupMat = new THREE.MeshStandardMaterial({
+    color: 0xffd866, roughness: 0.18, metalness: 1.0,
+    emissive: 0xff9000, emissiveIntensity: 0.55
+  });
+  const PICKUP_VALUE = 5;     // coins per pickup
+  const PICKUP_MAX = 5;       // max simultaneous on screen
+  const PICKUP_RATE = 0.55;   // probability per second
+
+  function spawnPickup() {
+    const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    const spawnZ = 220 + Math.random() * 60;
+    // Don't drop coins on top of traffic
+    if (state.traffic.some(t => Math.abs(t.lane - lane) < 1 && Math.abs(t.mesh.position.z - spawnZ) < 14)) return;
+    // Or on top of other pickups
+    if (state.pickups.some(p => Math.abs(p.lane - lane) < 0.5 && Math.abs(p.mesh.position.z - spawnZ) < 10)) return;
+
+    const grp = new THREE.Group();
+    const coin = new THREE.Mesh(pickupGeo, pickupMat);
+    coin.rotation.z = Math.PI / 2;   // face perpendicular to ground (Mario-style)
+    grp.add(coin);
+    grp.position.set(lane, 1.05, spawnZ);
+    scene.add(grp);
+    state.pickups.push({ mesh: grp, lane, bob: Math.random() * Math.PI * 2 });
+  }
+
+  function clearPickups() {
+    state.pickups.forEach(p => scene.remove(p.mesh));
+    state.pickups = [];
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RADAR (flipped X so screen-right = world -X)
+  // ═══════════════════════════════════════════════════════════════
+  const radarCtx = document.getElementById('radar-canvas').getContext('2d');
+  function drawRadar() {
+    const w = 140, h = 180;
+    radarCtx.clearRect(0, 0, w, h);
+
+    radarCtx.strokeStyle = 'rgba(120, 140, 160, 0.10)';
+    radarCtx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      radarCtx.beginPath(); radarCtx.moveTo(i * w / 4, 0); radarCtx.lineTo(i * w / 4, h); radarCtx.stroke();
+      radarCtx.beginPath(); radarCtx.moveTo(0, i * h / 4); radarCtx.lineTo(w, i * h / 4); radarCtx.stroke();
+    }
+
+    radarCtx.strokeStyle = 'rgba(232, 192, 56, 0.4)';
+    radarCtx.setLineDash([4, 4]);
+    radarCtx.beginPath(); radarCtx.moveTo(w/2, 0); radarCtx.lineTo(w/2, h); radarCtx.stroke();
+    radarCtx.setLineDash([]);
+
+    const xMap = lx => 10 + (7 - lx) / 14 * 120;
+    const zMap = lz => h - 30 - (lz / 170) * (h - 40);
+
+    const px = xMap(state.actualX);
+    const py = zMap(0);
+    radarCtx.fillStyle = '#00d4ff';
+    radarCtx.shadowColor = '#00d4ff';
+    radarCtx.shadowBlur = 8;
+    radarCtx.beginPath(); radarCtx.arc(px, py, 4, 0, Math.PI * 2); radarCtx.fill();
+    radarCtx.shadowBlur = 0;
+
+    state.traffic.forEach(t => {
+      const z = t.mesh.position.z;
+      if (z < -10 || z > 170) return;
+      const x = xMap(t.lane);
+      const y = zMap(z);
+      const dx = Math.abs(t.lane - state.actualX);
+      const threat = z > 0 && z < 50 && dx < 3;
+      radarCtx.fillStyle = threat ? '#ff3b3b' : (t.oncoming ? '#ff8844' : '#aaaaaa');
+      if (threat) { radarCtx.shadowColor = '#ff3b3b'; radarCtx.shadowBlur = 6; }
+      radarCtx.beginPath(); radarCtx.arc(x, y, 3, 0, Math.PI * 2); radarCtx.fill();
+      radarCtx.shadowBlur = 0;
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GAME LOOP
+  // ═══════════════════════════════════════════════════════════════
+  const clock = new THREE.Clock();
+  const warningEl  = document.getElementById('warning');
+  const warnLeftEl = document.getElementById('warn-left');
+  const warnRightEl= document.getElementById('warn-right');
+
+  function update(dt) {
+    if (!state.running) return;
+
+    // ─── PAUSE / COUNTDOWN ───
+    if (state.paused) return;
+    if (state.countdown > 0) {
+      state.countdown -= dt;
+      const el = document.getElementById('countdown-num');
+      let text;
+      if (state.countdown > 0.5) text = String(Math.ceil(state.countdown - 0.5));
+      else if (state.countdown > 0) text = 'GO!';
+      else text = null;
+      if (text !== state.displayedCountdown) {
+        state.displayedCountdown = text;
+        if (text === null) {
+          document.getElementById('countdown-overlay').style.display = 'none';
+        } else {
+          el.textContent = text;
+          el.classList.remove('animate');
+          if (text === 'GO!') el.classList.add('go'); else el.classList.remove('go');
+          void el.offsetWidth;
+          el.classList.add('animate');
+        }
+      }
+      if (state.countdown <= 0) state.countdown = 0;
+      return;
+    }
+
+    if (!state.crashed) {
+      // ─── INPUTS + UPGRADE-MODULATED PHYSICS ───
+      const accel = (keys['w'] || keys['arrowup']) ? 1 : 0;
+      const brake = (keys['s'] || keys['arrowdown']) ? 1 : 0;
+      const boost = keys['shift'] ? 1 : 0;
+
+      const targetMax = boost ? ENGINE_BOOST[state.upgrades.engine] : ENGINE_MAX[state.upgrades.engine];
+      const nitroMult = NITRO_MULT[state.upgrades.nitro];
+      const gripRate  = GRIP_RATE[state.upgrades.grip];
+      const scoreMult = SCORE_MULT[state.upgrades.multiplier];
+      const prestigeMult = 1 + state.prestige * 0.15;
+      const modeCoinMult = getModeById(state.currentMode).coinMult;
+      const coinReward= Math.floor(COIN_REWARD[state.upgrades.coinBonus] * prestigeMult * modeCoinMult);
+
+      if (accel) {
+        state.speed += ACCEL * (boost ? nitroMult : 1) * dt;
+        if (state.speed > targetMax) state.speed = targetMax;   // hard cap at rated top speed
+      }
+      if (brake) state.speed -= BRAKE * dt;
+      if (!accel && !brake) state.speed -= DRAG * dt;
+      // Above target (e.g., boost just released): bleed back faster than acceleration can fight
+      if (state.speed > targetMax) {
+        state.speed = Math.max(targetMax, state.speed - 28 * dt);
+      }
+      state.speed = Math.max(0, state.speed);
+
+      // ─── LANE INTERP ───
+      const dx = state.laneX - state.actualX;
+      state.actualX += dx * Math.min(1, dt * gripRate);
+      state.roll = -dx * 0.06;
+      playerCar.position.x = state.actualX;
+      playerCar.rotation.z = state.roll;
+      playerCar.rotation.y = -dx * 0.05;
+
+      // ─── PROGRESS ───
+      state.distance += state.speed * dt;
+      state.score = Math.floor(state.distance * (boost ? 1.5 : 1) * scoreMult);
+      if (state.speed > state.runStats.topSpeed) state.runStats.topSpeed = state.speed;
+
+      // ─── TRAFFIC MOTION + DODGE DETECTION ───
+      state.traffic.forEach(t => {
+        const prevZ = t.mesh.position.z;
+        const closingSpeed = t.oncoming ? state.speed + t.speed : state.speed - t.speed;
+        t.mesh.position.z -= closingSpeed * dt;
+        // Visual position follows the road curve; logical lane is used for collision
+        t.mesh.position.x = t.lane + curveOffset(t.mesh.position.z);
+        if (prevZ > -4 && t.mesh.position.z <= -4 && !t.passed && !t.crashedFlag) {
+          t.passed = true;
+          state.coins += coinReward;
+          state.lastRunCoins += coinReward;
+          state.runStats.dodges += 1;
+          progressChallenge('dodge', 1);
+          const el = document.getElementById('coin-val');
+          el.classList.remove('coin-pop');
+          void el.offsetWidth;
+          el.classList.add('coin-pop');
+        }
+        t.mesh.userData.wheels.forEach(w => { w.rotation.x -= t.speed * dt * 2.5; });
+      });
+
+      for (let i = state.traffic.length - 1; i >= 0; i--) {
+        if (state.traffic[i].mesh.position.z < -30) {
+          scene.remove(state.traffic[i].mesh);
+          state.traffic.splice(i, 1);
+        }
+      }
+      // GAUNTLET: traffic count ramps with wave (capped to avoid infinite chaos)
+      const modeNow = getModeById(state.currentMode);
+      let targetTraffic = activeMap.trafficCount;
+      if (modeNow.gauntlet) {
+        state.gauntletRampTimer -= dt;
+        if (state.gauntletRampTimer <= 0) {
+          if (state.gauntletExtra < 8) {
+            state.gauntletExtra += 1;
+            state.gauntletWave += 1;
+            showToast('WAVE ' + state.gauntletWave + ' — TRAFFIC UP', 'rank-up');
+            updateModeHUD();
+          }
+          state.gauntletRampTimer = 25;
+        }
+        targetTraffic = Math.min(13, activeMap.trafficCount + state.gauntletExtra);
+      }
+      while (state.traffic.length < targetTraffic) spawnCar();
+      // Decay invulnerability frames (TIME ATTACK after-life-lost grace)
+      if (state.invulnerable > 0) {
+        state.invulnerable -= dt;
+        // Blink the player car so you can see you're in i-frames
+        playerCar.visible = (Math.floor(state.invulnerable * 10) % 2 === 0);
+        if (state.invulnerable <= 0) playerCar.visible = true;
+      }
+
+      // ─── WARNING ───
+      let warn = 0;
+      let closestDangerZ = Infinity;
+      state.traffic.forEach(t => {
+        const dz = t.mesh.position.z;
+        const ddx = t.lane - state.actualX;
+        const absDx = Math.abs(ddx);
+        if (dz > 0 && dz < 70 && absDx < 4.5) {
+          if (dz < closestDangerZ) {
+            closestDangerZ = dz;
+            if (absDx < 1.5) warn = 2;
+            else warn = ddx > 0 ? -1 : 1;
+          }
+        }
+      });
+      state.warningSide = warn;
+      if (warn !== 0) {
+        warningEl.classList.add('show');
+        warnLeftEl.style.opacity  = (warn === -1 || warn === 2) ? 1 : 0.2;
+        warnRightEl.style.opacity = (warn ===  1 || warn === 2) ? 1 : 0.2;
+      } else {
+        warningEl.classList.remove('show');
+      }
+
+      // ─── COLLISION (uses logical lane, not curved visual position) ───
+      if (getMapById(state.currentMap).allowCollisions) {
+        const pHalfW = 1.1, pHalfL = 2.1, tHalfW = 1.1, tHalfL = 2.1;
+        for (const t of state.traffic) {
+          if (t.crashedFlag) continue;
+          const cx = Math.abs(t.lane - state.actualX);
+          const cz = Math.abs(t.mesh.position.z);
+          if (cx < (pHalfW + tHalfW) * 0.7 && cz < (pHalfL + tHalfL) * 0.7) {
+            crash(t); break;
+          }
+        }
+      }
+
+      // ─── PLAYER WHEELS / SCROLL ───
+      playerCar.userData.wheels.forEach(w => { w.rotation.x -= state.speed * dt * 2.5; });
+      const scrollAmount = state.speed * dt;
+
+      // ─── ROAD CURVE: evolve curve target and apply to long planes + scrolling props ───
+      state.curveTimer -= dt;
+      if (state.curveTimer <= 0) {
+        state.curveTarget = activeMap.curvesEnabled ? (Math.random() - 0.5) * 1.8 : 0;
+        state.curveTimer = 5 + Math.random() * 5;
+      }
+      state.curveValue += (state.curveTarget - state.curveValue) * Math.min(1, dt * 0.5);
+
+      // Displace vertex X positions on every curvable long plane (road, shoulders, yellow lines, edge lines)
+      for (const cm of curvableMeshes) {
+        const positions = cm.geometry.attributes.position;
+        const base = cm.userData.basePositions;
+        for (let i = 0, n = positions.count; i < n; i++) {
+          const baseX = base[i * 3 + 0];
+          const baseY = base[i * 3 + 1];
+          // After rotateX(-π/2), local Y maps to world -Z, so worldZ = mesh.z - localY
+          positions.setX(i, baseX + curveOffset(cm.position.z - baseY));
+        }
+        positions.needsUpdate = true;
+      }
+
+      dashes.forEach(d => {
+        d.position.z -= scrollAmount;
+        if (d.position.z < -50) d.position.z += TOTAL_DASHES * (DASH_LEN + DASH_GAP);
+        d.position.x = d.userData.baseX + curveOffset(d.position.z);
+      });
+      pylons.forEach(p => {
+        p.position.z -= scrollAmount;
+        if (p.position.z < -50) p.position.z += 60 * 25;
+        p.position.x = p.userData.baseX + curveOffset(p.position.z);
+      });
+      billboards.forEach(b => {
+        b.position.z -= scrollAmount;
+        if (b.position.z < -40) b.position.z += BILLBOARD_COUNT * BILLBOARD_SPACING;
+        b.position.x = b.userData.baseX + curveOffset(b.position.z);
+      });
+      gantries.forEach(g => {
+        g.position.z -= scrollAmount;
+        if (g.position.z < -30) g.position.z += GANTRY_COUNT * GANTRY_SPACING;
+        g.position.x = g.userData.baseX + curveOffset(g.position.z);
+      });
+
+      // ─── COIN PICKUPS ───
+      if (Math.random() < dt * activeMap.pickupRate && state.pickups.length < PICKUP_MAX) spawnPickup();
+      const now = performance.now();
+      for (let i = state.pickups.length - 1; i >= 0; i--) {
+        const p = state.pickups[i];
+        p.mesh.position.z -= scrollAmount;
+        p.mesh.position.x = p.lane + curveOffset(p.mesh.position.z);
+        p.mesh.rotation.y += dt * 4.5;
+        p.mesh.position.y = 1.05 + Math.sin(now * 0.005 + p.bob) * 0.12;
+
+        // Collection check uses logical lane (curve-independent)
+        const dxp = Math.abs(p.lane - state.actualX);
+        const dzp = Math.abs(p.mesh.position.z);
+        if (dxp < 1.3 && dzp < 1.7) {
+          state.coins += PICKUP_VALUE;
+          state.lastRunCoins += PICKUP_VALUE;
+          state.runStats.pickups += 1;
+          progressChallenge('pickup', 1);
+          const el = document.getElementById('coin-val');
+          el.classList.remove('coin-pop');
+          void el.offsetWidth;
+          el.classList.add('coin-pop');
+          scene.remove(p.mesh);
+          state.pickups.splice(i, 1);
+          continue;
+        }
+        if (p.mesh.position.z < -15) {
+          scene.remove(p.mesh);
+          state.pickups.splice(i, 1);
+        }
+      }
+    } else {
+      state.speed *= Math.pow(0.05, dt);
+      if (state.speed < 0.5) state.speed = 0;
+      state.cameraShake *= Math.pow(0.001, dt);
+    }
+
+    // ─── CAMERA ───
+    const camTargetX = state.actualX * 0.6;
+    const camTargetY = 3.4 + (state.speed / 100) * 0.3;
+    const camTargetZ = -7 - (state.speed / 100) * 0.5;
+    camera.position.x += (camTargetX - camera.position.x) * Math.min(1, dt * 3);
+    camera.position.y += (camTargetY - camera.position.y) * Math.min(1, dt * 4);
+    camera.position.z += (camTargetZ - camera.position.z) * Math.min(1, dt * 4);
+    if (state.cameraShake > 0.01) {
+      camera.position.x += (Math.random() - 0.5) * state.cameraShake;
+      camera.position.y += (Math.random() - 0.5) * state.cameraShake;
+    }
+    camera.lookAt(state.actualX + curveOffset(12) * 0.4, 1.0, 8);
+
+    // ─── HUD ───
+    const kmh = Math.floor(state.speed * 3.6);
+    const topSpeed = ENGINE_BOOST[ENGINE_BOOST.length - 1];
+    document.getElementById('speed-val').textContent = kmh;
+    document.getElementById('speed-fill').style.width = (state.speed / topSpeed * 100) + '%';
+    document.getElementById('dist-val').textContent = (state.distance / 1000).toFixed(2) + ' KM';
+    document.getElementById('score-val').textContent = state.score.toLocaleString();
+    document.getElementById('best-val').textContent = state.best.toLocaleString();
+    document.getElementById('coin-val').textContent = state.coins.toLocaleString();
+
+    // ─── BOOST VISUAL FEEDBACK ───
+    const shiftHeld = !!keys['shift'];
+    const accelHeld = !!(keys['w'] || keys['arrowup']);
+    const showBoost = !state.crashed && state.running && shiftHeld && accelHeld;
+
+    // HUD nitro indicator — lights up the instant Shift is detected (even before W is pressed)
+    document.getElementById('speedo-nitro').classList.toggle('active', shiftHeld && !state.crashed);
+
+    // FOV punch — pulls the world toward you when actually boosting at speed
+    const targetFov = (showBoost && state.speed > 25) ? 74 : 62;
+    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 3);
+    camera.updateProjectionMatrix();
+
+    // Engine flames
+    if (playerCar.userData.flames) {
+      playerCar.userData.flames.forEach(({ outer, inner }) => {
+        const target = showBoost ? 0.85 : 0;
+        outer.material.opacity += (target - outer.material.opacity) * Math.min(1, dt * 14);
+        inner.material.opacity += (target - inner.material.opacity) * Math.min(1, dt * 14);
+        if (outer.material.opacity > 0.02) {
+          const flick = 0.75 + Math.random() * 0.5;
+          outer.scale.y = flick;
+          outer.scale.x = outer.scale.z = 0.85 + Math.random() * 0.3;
+          inner.scale.y = flick * 0.9;
+          inner.scale.x = inner.scale.z = 0.7 + Math.random() * 0.3;
+        }
+      });
+    }
+
+    drawRadar();
+  }
+
+  function crash(other) {
+    if (state.crashed) return;
+    if (state.invulnerable > 0) return;
+    const mode = getModeById(state.currentMode);
+    // TIME ATTACK: lose a life instead of crashing instantly
+    if (mode.lives > 1 && state.lives > 1) {
+      state.lives -= 1;
+      state.invulnerable = 1.8;
+      state.cameraShake = 0.3;
+      if (other) { other.crashedFlag = true; other.speed = 0; other.oncoming = false; }
+      // Push the offending traffic car back so we don't re-collide
+      if (other) other.mesh.position.z = -25;
+      // Flash + sound cue
+      const flash = document.getElementById('life-lost-flash');
+      flash.classList.add('show');
+      setTimeout(() => flash.classList.remove('show'), 300);
+      updateModeHUD();
+      showToast('LIFE LOST — ' + state.lives + ' LEFT');
+      return;
+    }
+    // Final crash — go to dashboard
+    state.crashed = true;
+    state.cameraShake = 0.4;
+    if (other) { other.crashedFlag = true; other.speed = 0; other.oncoming = false; }
+    state.traffic.forEach(t => { t.speed = 0; });
+    if (mode.countsForBest && getMapById(state.currentMap).countsForBest && state.score > state.best) state.best = state.score;
+    finalizeRun();
+    setTimeout(() => { showDashboard(true); }, 900);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PAUSE
+  // ═══════════════════════════════════════════════════════════════
+  function togglePause() {
+    if (!state.running || state.crashed) return;
+    if (state.countdown > 0) return;
+    if (state.paused) resumeFromPause();
+    else {
+      state.paused = true;
+      document.getElementById('pause-overlay').style.display = 'flex';
+    }
+  }
+
+  function resumeFromPause() {
+    if (!state.paused) return;
+    state.paused = false;
+    state.countdown = 5.5;
+    state.displayedCountdown = null;
+    document.getElementById('pause-overlay').style.display = 'none';
+    document.getElementById('countdown-overlay').style.display = 'flex';
+  }
+
+  function exitToDashboard() {
+    if (!state.running) return;
+    state.running = false;
+    state.paused = false;
+    state.crashed = false;
+    state.countdown = 0;
+    state.displayedCountdown = null;
+    // Only update best on maps that count for it (highway, sunset — not practice)
+    if (activeMap.countsForBest && state.score > state.best) state.best = state.score;
+    // Finalize run-end progression (XP, challenges)
+    finalizeRun();
+    document.getElementById('pause-overlay').style.display = 'none';
+    document.getElementById('countdown-overlay').style.display = 'none';
+    document.getElementById('warning').classList.remove('show');
+    document.getElementById('wave-badge').classList.remove('show');
+    document.getElementById('lives-display').classList.remove('show');
+    const pb = document.getElementById('practice-badge');
+    if (pb) pb.style.display = 'none';
+    showDashboard(true);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PROGRESSION — Ranks, XP, Daily Challenges, Daily Map, Prestige
+  // ═══════════════════════════════════════════════════════════════
+
+  // --- Date helpers (deterministic daily rotation) ---
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function hashStr(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+    return Math.abs(h);
+  }
+  function dailyPick(pool, salt) {
+    const h = hashStr(todayKey() + ':' + salt);
+    return pool[h % pool.length];
+  }
+
+  // --- Ranks ---
+  function currentRank() {
+    let r = RANKS[0];
+    for (const rank of RANKS) {
+      if (state.xp >= rank.xp) r = rank;
+    }
+    return r;
+  }
+  function nextRank() {
+    const cur = currentRank();
+    const idx = RANKS.indexOf(cur);
+    return idx < RANKS.length - 1 ? RANKS[idx + 1] : null;
+  }
+  function addXP(amount) {
+    if (amount <= 0) return;
+    const before = currentRank();
+    state.xp += amount;
+    state.runStats.xpEarned += amount;
+    const after = currentRank();
+    if (after !== before) {
+      showToast('RANK UP — ' + after.name, 'rank-up');
+    }
+  }
+
+  // --- Daily reset ---
+  function ensureDailies() {
+    const today = todayKey();
+    if (state.dailyDate !== today) {
+      state.dailyDate = today;
+      const tmplE = dailyPick(CHALLENGE_POOL_EASY,   'e');
+      const tmplM = dailyPick(CHALLENGE_POOL_MEDIUM, 'm');
+      const tmplH = dailyPick(CHALLENGE_POOL_HARD,   'h');
+      state.dailyChallenges = [tmplE, tmplM, tmplH].map(t => ({
+        ...t, progress: 0, done: false, claimed: false
+      }));
+      // Pick today's featured map (practice excluded — it's always free)
+      const pool = MAPS.filter(m => m.id !== 'practice');
+      state.dailyMapId = dailyPick(pool, 'map').id;
+      state.dailyMapVetoed = false;
+    }
+  }
+
+  // --- Challenge progress ---
+  // 'value' is either an amount (cumulative) or a magnitude (session = use max).
+  function progressChallenge(type, value) {
+    state.dailyChallenges.forEach(c => {
+      if (c.type !== type || c.done) return;
+      if (c.mode === 'session') {
+        // Take the max we've seen this session-day
+        if (value > c.progress) c.progress = value;
+      } else {
+        c.progress += value;
+      }
+      if (c.progress >= c.target) {
+        c.progress = c.target;
+        c.done = true;
+        showToast('CHALLENGE DONE — TAP TO CLAIM');
+      }
+    });
+  }
+  // Session-mode challenges reset each new run (they're "in ONE run" style).
+  function resetSessionChallenges() {
+    state.dailyChallenges.forEach(c => {
+      if (c.mode === 'session' && !c.done) c.progress = 0;
+    });
+  }
+  function claimChallenge(id) {
+    const c = state.dailyChallenges.find(x => x.id === id);
+    if (!c || !c.done || c.claimed) return;
+    const mult = 1 + state.prestige * 0.15;
+    const coinReward = Math.floor(c.coin * mult);
+    state.coins += coinReward;
+    c.claimed = true;
+    addXP(c.xp);
+    showToast('+' + coinReward + '◆  +' + c.xp + ' XP');
+    refreshDashboard();
+  }
+
+  // --- Run finalization (XP, challenge progress at end of run) ---
+  function finalizeRun() {
+    // Convert final run stats into challenge progress
+    const distKm = state.distance / 1000;
+    const topSpeedKmH = state.runStats.topSpeed * 3.6;
+    progressChallenge('distance', distKm);
+    progressChallenge('score', state.score);
+    progressChallenge('topSpeed', Math.floor(topSpeedKmH));
+    // Award XP for the run
+    const base = Math.floor(state.distance / 50)
+               + state.runStats.dodges * 3
+               + state.runStats.pickups * 5;
+    let xp = base;
+    if (state.currentMap === 'practice') {
+      xp = Math.floor(xp * 0.5);                    // practice gives less XP
+    } else if (state.currentMap === state.dailyMapId) {
+      xp = Math.floor(xp * 1.25);                   // daily-map bonus
+    }
+    // Apply mode XP multiplier (gauntlet 1.5x, time attack 1.2x, etc.)
+    const mode = getModeById(state.currentMode);
+    xp = Math.floor(xp * mode.xpMult);
+    addXP(xp);
+  }
+
+  // --- Prestige ---
+  function canPrestige() {
+    if (currentRank() !== RANKS[RANKS.length - 1]) return false;
+    return state.upgrades.engine     === 4
+        && state.upgrades.aero       === 3
+        && state.upgrades.grip       === 3
+        && state.upgrades.nitro      === 3
+        && state.upgrades.multiplier === 3
+        && state.upgrades.coinBonus  === 3;
+  }
+  function doPrestige() {
+    if (!canPrestige()) return;
+    if (!confirm('PRESTIGE\n\nReset rank and ALL upgrades for a permanent +15% coin bonus (stacks each prestige).\n\nKeeps: cars, nitro colors, current coins, best score.\n\nProceed?')) return;
+    state.prestige += 1;
+    state.upgrades = { engine: 0, aero: 0, grip: 0, nitro: 0, multiplier: 0, coinBonus: 0 };
+    state.xp = 0;
+    rebuildPlayerCar();
+    refreshDashboard();
+    showToast('PRESTIGE ' + state.prestige + '◆  +' + (state.prestige * 15) + '% COINS', 'prestige');
+  }
+
+  // --- Daily map veto ---
+  function openVetoDialog() {
+    if (state.coins < 100) {
+      showToast('NEED 100◆ TO VETO');
+      return;
+    }
+    renderVetoOptions();
+    document.getElementById('veto-dialog').classList.add('show');
+  }
+  function closeVetoDialog() {
+    document.getElementById('veto-dialog').classList.remove('show');
+  }
+  function renderVetoOptions() {
+    const row = document.getElementById('veto-options');
+    row.innerHTML = '';
+    MAPS.filter(m => m.id !== 'practice').forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'veto-option' + (m.id === state.dailyMapId ? ' current' : '');
+      card.innerHTML = `
+        <div class="map-icon">${m.icon}</div>
+        <div class="map-name">${m.name}</div>
+      `;
+      if (m.id !== state.dailyMapId) {
+        card.addEventListener('click', () => vetoDailyMap(m.id));
+      }
+      row.appendChild(card);
+    });
+  }
+  function vetoDailyMap(newMapId) {
+    if (state.coins < 100) return;
+    if (newMapId === state.dailyMapId) return;
+    state.coins -= 100;
+    state.dailyMapId = newMapId;
+    state.dailyMapVetoed = true;
+    closeVetoDialog();
+    showToast('NEW DAILY MAP SET');
+    refreshDashboard();
+  }
+
+  // --- Toast notifications ---
+  function showToast(text, cls) {
+    const t = document.getElementById('toast');
+    t.textContent = text;
+    t.className = '';
+    if (cls) t.classList.add(cls);
+    void t.offsetWidth;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // --- Dashboard renderers ---
+  function renderRankCard() {
+    const cur = currentRank();
+    const nxt = nextRank();
+    const badge = document.getElementById('rank-badge');
+    badge.textContent = cur.name[0];
+    badge.style.color = cur.color;
+    const nameEl = document.getElementById('rank-name');
+    nameEl.textContent = cur.name;
+    nameEl.style.color = cur.color;
+    const xpEl   = document.getElementById('rank-xp');
+    const fillEl = document.getElementById('rank-fill');
+    if (nxt) {
+      const within = state.xp - cur.xp;
+      const range  = nxt.xp - cur.xp;
+      const pct    = Math.max(0, Math.min(100, (within / range) * 100));
+      xpEl.textContent = state.xp.toLocaleString() + ' / ' + nxt.xp.toLocaleString() + ' XP — NEXT: ' + nxt.name;
+      fillEl.style.width = pct + '%';
+    } else {
+      xpEl.textContent = state.xp.toLocaleString() + ' XP — MAX RANK';
+      fillEl.style.width = '100%';
+    }
+    const chip = document.getElementById('rank-prestige');
+    if (state.prestige > 0) {
+      chip.style.display = 'inline-block';
+      chip.textContent = 'PRESTIGE ' + state.prestige + '◆';
+    } else {
+      chip.style.display = 'none';
+    }
+  }
+  function renderChallenges() {
+    const list = document.getElementById('challenges-list');
+    list.innerHTML = '';
+    state.dailyChallenges.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'challenge-item tier-' + c.tier + (c.done ? ' done' : '') + (c.claimed ? ' claimed' : '');
+      const labelFilled = c.label.replace('{target}', c.target.toLocaleString());
+      const pct = Math.min(100, (c.progress / c.target) * 100);
+      const prog = (c.mode === 'session' && c.type === 'distance')
+        ? c.progress.toFixed(2)
+        : (c.type === 'topSpeed' ? Math.floor(c.progress) : Math.floor(c.progress).toLocaleString());
+      const targ = c.target.toLocaleString();
+      item.innerHTML = `
+        <div class="challenge-icon">${c.icon}</div>
+        <div class="challenge-text">
+          <div class="challenge-label">${labelFilled}</div>
+          <div class="challenge-progress-row">
+            <div class="challenge-bar-track"><div class="challenge-bar-fill" style="width:${pct}%"></div></div>
+            <div class="challenge-progress-text">${prog}/${targ}</div>
+          </div>
+        </div>
+        ${
+          c.claimed
+            ? '<div class="challenge-claimed-mark">✓ DONE</div>'
+            : c.done
+              ? `<button class="challenge-claim-btn" data-claim="${c.id}">CLAIM<br>+${c.coin}◆</button>`
+              : `<div class="challenge-reward"><span class="coin-icon"></span>+${c.coin}</div>`
+        }
+      `;
+      list.appendChild(item);
+    });
+    list.querySelectorAll('[data-claim]').forEach(btn => {
+      btn.addEventListener('click', () => claimChallenge(btn.dataset.claim));
+    });
+  }
+  function renderDailyMapCard() {
+    const m = getMapById(state.dailyMapId);
+    document.getElementById('daily-map-icon').textContent = m.icon;
+    document.getElementById('daily-map-name').textContent = m.name;
+    const bonusEl = document.getElementById('daily-map-bonus');
+    bonusEl.innerHTML = state.dailyMapVetoed
+      ? '<span>+25% XP</span> on this map · vetoed today'
+      : '<span>+25% XP</span> on this map · resets at midnight';
+    const vetoBtn = document.getElementById('veto-btn');
+    if (state.dailyMapVetoed) {
+      vetoBtn.style.display = 'none';
+    } else {
+      vetoBtn.style.display = 'block';
+      vetoBtn.disabled = state.coins < 100;
+    }
+  }
+  function renderModePicker() {
+    const row = document.getElementById('mode-row');
+    row.innerHTML = '';
+    MODES.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'mode-card' + (state.currentMode === m.id ? ' active' : '');
+      card.innerHTML = `
+        <div class="mode-icon">${m.icon}</div>
+        <div class="mode-name">${m.name}</div>
+        <div class="mode-tag">${m.tagline}</div>
+      `;
+      card.addEventListener('click', () => {
+        state.currentMode = m.id;
+        renderModePicker();
+      });
+      row.appendChild(card);
+    });
+  }
+
+  function renderPrestigeBtn() {
+    document.getElementById('prestige-btn').style.display = canPrestige() ? 'block' : 'none';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GARAGE — Cars
+  // ═══════════════════════════════════════════════════════════════
+  function carSVG(color) {
+    const hex = '#' + color.toString(16).padStart(6, '0');
+    const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+    const dark = '#' + [r,g,b].map(c => Math.max(0, c - 40).toString(16).padStart(2,'0')).join('');
+    return `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bodyG${color}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${hex}"/>
+          <stop offset="100%" stop-color="${dark}"/>
+        </linearGradient>
+      </defs>
+      <rect x="14" y="22" width="34" height="3" fill="#111" rx="1"/>
+      <rect x="20" y="25" width="2" height="7" fill="#111"/>
+      <rect x="40" y="25" width="2" height="7" fill="#111"/>
+      <path d="M 12 56 L 12 48 L 18 38 Q 30 30, 50 28 L 70 24 Q 100 16, 130 22 Q 158 28, 180 36 L 188 42 L 188 56 Z" fill="url(#bodyG${color})" stroke="#000" stroke-width="0.6"/>
+      <path d="M 52 28 Q 70 17, 100 14 Q 132 14, 152 28" fill="none" stroke="${dark}" stroke-width="1"/>
+      <path d="M 58 27 Q 75 18, 100 17 Q 130 17, 148 28 L 138 30 Q 115 22, 90 23 Q 70 25, 62 28 Z" fill="#0a0d14" opacity="0.9"/>
+      <line x1="100" y1="22" x2="100" y2="48" stroke="${dark}" stroke-width="0.4"/>
+      <circle cx="52" cy="58" r="11" fill="#0a0a0a"/>
+      <circle cx="52" cy="58" r="6" fill="#3a3e44"/>
+      <circle cx="52" cy="58" r="2" fill="#1a1c20"/>
+      <circle cx="155" cy="58" r="11" fill="#0a0a0a"/>
+      <circle cx="155" cy="58" r="6" fill="#3a3e44"/>
+      <circle cx="155" cy="58" r="2" fill="#1a1c20"/>
+      <rect x="58" y="54" width="2.5" height="6" fill="#cc4400" rx="0.5"/>
+      <rect x="148" y="54" width="2.5" height="6" fill="#cc4400" rx="0.5"/>
+      <ellipse cx="182" cy="40" rx="3" ry="3" fill="#fff8dc"/>
+      <rect x="14" y="36" width="3" height="2" fill="#ff2030"/>
+      <rect x="170" y="51" width="20" height="2" fill="#0a0a0a"/>
+    </svg>`;
+  }
+
+  const shopModal = document.getElementById('shop-modal');
+  const carGrid = document.getElementById('car-grid');
+  const upgradeGrid = document.getElementById('upgrade-grid');
+  const shopCoinVal = document.getElementById('shop-coin-val');
+
+  function renderCars() {
+    carGrid.innerHTML = '';
+    CAR_CATALOG.forEach(car => {
+      const owned = state.ownedCars.includes(car.id);
+      const equipped = state.currentCar === car.id;
+      const canAfford = state.coins >= car.price;
+
+      const card = document.createElement('div');
+      let cls = 'car-card';
+      if (equipped) cls += ' equipped';
+      else if (owned) cls += ' owned';
+      card.className = cls;
+
+      let actionHTML;
+      if (equipped) actionHTML = '<button class="item-btn equipped" disabled>● EQUIPPED</button>';
+      else if (owned) actionHTML = `<button class="item-btn equip" data-action="equip" data-id="${car.id}">EQUIP</button>`;
+      else actionHTML = `<button class="item-btn buy" data-action="buy" data-id="${car.id}"${canAfford ? '' : ' disabled'}>BUY · ${car.price} ◆</button>`;
+
+      card.innerHTML = `
+        <div class="car-preview">${carSVG(car.color)}</div>
+        <div class="car-name">${car.name}</div>
+        <div class="car-tag ${car.tag}">${car.tag}</div>
+        ${actionHTML}
+      `;
+      carGrid.appendChild(card);
+    });
+
+    carGrid.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        if (btn.dataset.action === 'buy') buyCar(id);
+        else if (btn.dataset.action === 'equip') equipCar(id);
+      });
+    });
+  }
+
+  function buyCar(id) {
+    const car = getCarById(id);
+    if (!car || state.ownedCars.includes(id) || state.coins < car.price) return;
+    state.coins -= car.price;
+    state.ownedCars.push(id);
+    equipCar(id);
+  }
+
+  function equipCar(id) {
+    if (!state.ownedCars.includes(id)) return;
+    state.currentCar = id;
+    rebuildPlayerCar();
+    renderShop();
+  }
+
+  function rebuildPlayerCar() {
+    const pos = playerCar.position.clone();
+    const rot = playerCar.rotation.clone();
+    scene.remove(playerCar);
+    playerCar = buildPlayerCar();
+    playerCar.position.copy(pos);
+    playerCar.rotation.copy(rot);
+    scene.add(playerCar);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GARAGE — Upgrades
+  // ═══════════════════════════════════════════════════════════════
+  function renderUpgrades() {
+    upgradeGrid.innerHTML = '';
+    UPGRADES.forEach(up => {
+      const lvl = state.upgrades[up.id];
+      const maxLvl = up.prices.length - 1;
+      const isMax = lvl >= maxLvl;
+      const nextPrice = isMax ? 0 : up.prices[lvl + 1];
+      const canAfford = state.coins >= nextPrice;
+      const currEffect = up.effects[lvl];
+      const nextEffect = isMax ? null : up.effects[lvl + 1];
+
+      const card = document.createElement('div');
+      card.className = 'upgrade-card' + (isMax ? ' maxed' : '');
+
+      let pipsHTML = '';
+      for (let i = 0; i < maxLvl; i++) {
+        pipsHTML += `<div class="pip ${i < lvl ? 'filled' : ''}"></div>`;
+      }
+
+      let effectHTML;
+      if (isMax) {
+        effectHTML = `<div class="upgrade-effect"><span class="single">${currEffect} · MAXED</span></div>`;
+      } else {
+        effectHTML = `<div class="upgrade-effect">
+          <span class="current">${currEffect}</span>
+          <span class="arrow">→</span>
+          <span class="next">${nextEffect}</span>
+        </div>`;
+      }
+
+      let btnHTML;
+      if (isMax) {
+        btnHTML = `<button class="item-btn maxed" disabled>● MAXED</button>`;
+      } else {
+        btnHTML = `<button class="item-btn buy" data-upgrade="${up.id}"${canAfford ? '' : ' disabled'}>BUY · ${nextPrice.toLocaleString()} ◆</button>`;
+      }
+
+      card.innerHTML = `
+        <div class="upgrade-header">
+          <span class="upgrade-icon">${up.icon}</span>
+          <span class="upgrade-name">${up.name}</span>
+        </div>
+        <div class="upgrade-desc">${up.description}</div>
+        <div class="upgrade-pips">${pipsHTML}</div>
+        ${effectHTML}
+        ${btnHTML}
+      `;
+      upgradeGrid.appendChild(card);
+    });
+
+    upgradeGrid.querySelectorAll('[data-upgrade]').forEach(btn => {
+      btn.addEventListener('click', () => buyUpgrade(btn.dataset.upgrade));
+    });
+  }
+
+  function buyUpgrade(id) {
+    const up = UPGRADES.find(u => u.id === id);
+    if (!up) return;
+    const lvl = state.upgrades[id];
+    const maxLvl = up.prices.length - 1;
+    if (lvl >= maxLvl) return;
+    const price = up.prices[lvl + 1];
+    if (state.coins < price) return;
+    state.coins -= price;
+    state.upgrades[id]++;
+    if (id === 'aero') rebuildPlayerCar();   // make diffuser / extended wing visible
+    renderShop();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GARAGE — Nitro flame colors
+  // ═══════════════════════════════════════════════════════════════
+  function nitroSVG(outer, inner) {
+    const o = '#' + outer.toString(16).padStart(6, '0');
+    const i = '#' + inner.toString(16).padStart(6, '0');
+    const id = `flm${outer.toString(16)}${inner.toString(16)}`;
+    return `<svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="${id}o" cx="0.78" cy="0.5" r="0.55">
+          <stop offset="0%" stop-color="${i}" stop-opacity="1"/>
+          <stop offset="32%" stop-color="${o}" stop-opacity="0.95"/>
+          <stop offset="78%" stop-color="${o}" stop-opacity="0.42"/>
+          <stop offset="100%" stop-color="${o}" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="${id}c" cx="0.85" cy="0.5" r="0.22">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+          <stop offset="70%" stop-color="${i}" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="${i}" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="60" cy="30" rx="55" ry="18" fill="url(#${id}o)"/>
+      <ellipse cx="92" cy="30" rx="13" ry="7" fill="url(#${id}c)"/>
+    </svg>`;
+  }
+
+  const nitroGrid = document.getElementById('nitro-grid');
+
+  function renderNitros() {
+    nitroGrid.innerHTML = '';
+    NITRO_COLORS.forEach(n => {
+      const owned = state.unlockedNitros.includes(n.id);
+      const equipped = state.currentNitro === n.id;
+      const canAfford = state.coins >= n.price;
+
+      let cls = 'nitro-card';
+      if (equipped) cls += ' equipped';
+      else if (owned) cls += ' owned';
+
+      let actionHTML;
+      if (equipped) actionHTML = '<button class="item-btn equipped" disabled>● EQUIPPED</button>';
+      else if (owned) actionHTML = `<button class="item-btn equip" data-action="equip-nitro" data-id="${n.id}">EQUIP</button>`;
+      else actionHTML = `<button class="item-btn buy" data-action="buy-nitro" data-id="${n.id}"${canAfford ? '' : ' disabled'}>BUY · ${n.price} ◆</button>`;
+
+      const card = document.createElement('div');
+      card.className = cls;
+      card.innerHTML = `
+        <div class="nitro-preview">${nitroSVG(n.outer, n.inner)}</div>
+        <div class="nitro-name">${n.name}</div>
+        ${actionHTML}
+      `;
+      nitroGrid.appendChild(card);
+    });
+
+    nitroGrid.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        if (btn.dataset.action === 'buy-nitro') buyNitro(id);
+        else if (btn.dataset.action === 'equip-nitro') equipNitro(id);
+      });
+    });
+  }
+
+  function buyNitro(id) {
+    const n = getNitroById(id);
+    if (!n || state.unlockedNitros.includes(id) || state.coins < n.price) return;
+    state.coins -= n.price;
+    state.unlockedNitros.push(id);
+    equipNitro(id);
+  }
+
+  function equipNitro(id) {
+    if (!state.unlockedNitros.includes(id)) return;
+    state.currentNitro = id;
+    applyNitroColorToCar();
+    renderShop();
+  }
+
+  function applyNitroColorToCar() {
+    const n = getNitroById(state.currentNitro);
+    if (!n || !playerCar.userData.flames) return;
+    playerCar.userData.flames.forEach(({ outer, inner }) => {
+      outer.material.color.setHex(n.outer);
+      inner.material.color.setHex(n.inner);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SHOP CONTROL
+  // ═══════════════════════════════════════════════════════════════
+  function renderShop() {
+    shopCoinVal.textContent = state.coins.toLocaleString();
+    renderCars();
+    renderUpgrades();
+    renderNitros();
+  }
+
+  function openShop() {
+    renderShop();
+    shopModal.classList.add('open');
+  }
+  function closeShop() {
+    shopModal.classList.remove('open');
+  }
+
+  // Tabs
+  document.querySelectorAll('.shop-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // START / RESTART
+  // ═══════════════════════════════════════════════════════════════
+  function start() {
+    ensureDailies();              // refresh daily challenges + featured map if new day
+    resetSessionChallenges();     // session-mode challenges reset each run
+    state.runStats = { dodges: 0, pickups: 0, topSpeed: 0, xpEarned: 0 };
+    // ── Initialize mode-specific state ──
+    const mode = getModeById(state.currentMode);
+    state.lives = mode.lives;
+    state.invulnerable = 0;
+    state.gauntletWave = 1;
+    state.gauntletExtra = 0;
+    state.gauntletRampTimer = 25;
+    state.running = true;
+    state.crashed = false;
+    state.paused = false;
+    state.countdown = 0;
+    state.displayedCountdown = null;
+    state.speed = 30;
+    state.distance = 0;
+    state.score = 0;
+    state.runStartCoins = state.coins;
+    state.lastRunCoins = 0;
+    state.targetLaneIdx = 2;
+    state.laneX = LANES[2];
+    state.actualX = LANES[2];
+    state.roll = 0;
+    state.cameraShake = 0;
+    playerCar.position.set(state.actualX, 0, 0);
+    playerCar.rotation.set(0, 0, 0);
+    clearTraffic();
+    clearPickups();
+    state.curveTarget = 0;
+    state.curveValue = 0;
+    state.curveTimer = 4 + Math.random() * 3;
+    applyMap(state.currentMap);
+    for (let i = 0; i < activeMap.trafficCount; i++) spawnCar();
+
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('pause-overlay').style.display = 'none';
+    document.getElementById('countdown-overlay').style.display = 'none';
+    document.getElementById('warning').classList.remove('show');
+    // Mode-specific HUD
+    updateModeHUD();
+    setTouchControlsVisible(true);
+  }
+  function restart() { start(); }
+
+  // ─── MODE HUD (wave badge, lives display) ───
+  function updateModeHUD() {
+    const mode = getModeById(state.currentMode);
+    const wb = document.getElementById('wave-badge');
+    const ld = document.getElementById('lives-display');
+    const pb = document.getElementById('practice-badge');
+    // Hide all then show only the relevant one
+    wb.classList.remove('show');
+    ld.classList.remove('show');
+    if (pb) pb.style.display = 'none';
+    if (!state.running) return;
+    if (mode.gauntlet) {
+      document.getElementById('wave-text').textContent = 'WAVE ' + state.gauntletWave;
+      wb.classList.add('show');
+    } else if (mode.lives > 1) {
+      // Lives display
+      ld.classList.add('show');
+      for (let i = 1; i <= 3; i++) {
+        const h = document.getElementById('heart-' + i);
+        h.classList.toggle('lost', i > state.lives);
+      }
+    } else if (state.currentMap === 'practice') {
+      if (pb) pb.style.display = 'flex';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DASHBOARD / HOME SCREEN
+  // ═══════════════════════════════════════════════════════════════
+  const AERO_NAMES = ['Stock aero', 'Diffuser kit', 'Extended wing', 'Full aero kit'];
+
+  function renderMapPicker() {
+    const row = document.getElementById('map-row');
+    row.innerHTML = '';
+    MAPS.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'map-card' + (state.currentMap === m.id ? ' active' : '');
+      card.innerHTML = `
+        <div class="map-icon">${m.icon}</div>
+        <div class="map-name">${m.name}</div>
+        <div class="map-tag">${m.tagline}</div>
+      `;
+      card.addEventListener('click', () => {
+        applyMap(m.id);
+        renderMapPicker();
+      });
+      row.appendChild(card);
+    });
+  }
+
+  function refreshDashboard() {
+    ensureDailies();  // make sure today's challenges + featured map are populated
+    document.getElementById('dash-best').textContent = state.best.toLocaleString();
+    document.getElementById('dash-coins').textContent = state.coins.toLocaleString();
+    const carDef = getCarById(state.currentCar);
+    document.getElementById('dash-car-preview').innerHTML = carSVG(carDef.color);
+    document.getElementById('dash-car-name').textContent = carDef.name;
+    document.getElementById('dash-car-engine').textContent = UPGRADES[0].effects[state.upgrades.engine];
+    document.getElementById('dash-car-aero').textContent = AERO_NAMES[state.upgrades.aero] || 'Stock aero';
+    renderRankCard();
+    renderModePicker();
+    renderChallenges();
+    renderDailyMapCard();
+    renderMapPicker();
+    renderPrestigeBtn();
+  }
+
+  function showDashboard(fromCrash = false) {
+    refreshDashboard();
+    // Hide all in-game HUD overlays
+    document.getElementById('wave-badge').classList.remove('show');
+    document.getElementById('lives-display').classList.remove('show');
+    setTouchControlsVisible(false);
+    if (fromCrash) {
+      document.getElementById('dash-sub').textContent = '— RUN ENDED —';
+      document.getElementById('dash-last-run').style.display = 'block';
+      document.getElementById('dash-last-dist').textContent = (state.distance / 1000).toFixed(2) + ' KM';
+      document.getElementById('dash-last-score').textContent = state.score.toLocaleString();
+      document.getElementById('dash-last-coins').textContent = '+' + state.lastRunCoins.toLocaleString();
+      // Extended run-summary detail (top speed, dodges, pickups, XP)
+      const topKmH = Math.floor(state.runStats.topSpeed * 3.6);
+      const detail = document.getElementById('dash-last-detail');
+      detail.innerHTML =
+        '<span class="stat-pill">TOP SPEED <span class="v">' + topKmH + ' KM/H</span></span>·' +
+        '<span class="stat-pill">DODGES <span class="v">' + state.runStats.dodges + '</span></span>·' +
+        '<span class="stat-pill">PICKUPS <span class="v">' + state.runStats.pickups + '</span></span>·' +
+        '<span class="stat-pill">XP <span class="xp-earned">+' + state.runStats.xpEarned + '</span></span>';
+    } else {
+      document.getElementById('dash-sub').textContent = '— READY TO RACE —';
+      document.getElementById('dash-last-run').style.display = 'none';
+    }
+    document.getElementById('dashboard').style.display = 'flex';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // EVENT WIRING
+  // ═══════════════════════════════════════════════════════════════
+  document.getElementById('dash-start').addEventListener('click', start);
+  document.getElementById('dash-garage').addEventListener('click', openShop);
+  document.getElementById('pause-btn').addEventListener('click', togglePause);
+  document.getElementById('resume-btn').addEventListener('click', resumeFromPause);
+  document.getElementById('exit-btn').addEventListener('click', exitToDashboard);
+  document.getElementById('shop-btn').addEventListener('click', openShop);
+  document.getElementById('coin-display').addEventListener('click', openShop);
+  document.getElementById('shop-close').addEventListener('click', () => {
+    closeShop();
+    if (document.getElementById('dashboard').style.display === 'flex') refreshDashboard();
+  });
+  shopModal.addEventListener('click', e => {
+    if (e.target === shopModal) {
+      closeShop();
+      if (document.getElementById('dashboard').style.display === 'flex') refreshDashboard();
+    }
+  });
+  // Progression UI wiring
+  document.getElementById('veto-btn').addEventListener('click', openVetoDialog);
+  document.getElementById('veto-cancel').addEventListener('click', closeVetoDialog);
+  document.getElementById('veto-dialog').addEventListener('click', e => {
+    if (e.target.id === 'veto-dialog') closeVetoDialog();
+  });
+  document.getElementById('prestige-btn').addEventListener('click', doPrestige);
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER LOOP
+  // ═══════════════════════════════════════════════════════════════
+  function loop() {
+    const dt = Math.min(0.05, clock.getDelta());
+    update(dt);
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  }
+
+  camera.position.set(0, 4, -8);
+  camera.lookAt(0, 1, 8);
+
+  applyMap(state.currentMap);   // tint the scene to the default map
+  applyMap(state.currentMap);   // apply the default map's scene settings
+  refreshDashboard();           // populate the home screen on first load
+
+  loop();
+})();
+</script>
+</body>
+</html>
